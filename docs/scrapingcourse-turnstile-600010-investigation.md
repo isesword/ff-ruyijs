@@ -414,3 +414,23 @@ vs 宿主 1512×982/30bit——"一台 M1 基础款 mac"是真实存在的配置
 "补"字所在，upstream 无此代码）。作者 20261031 的 README 证明他自己也还在
 这条边上权衡——**这正是联系作者的充分理由：双方被同一 verdict 卡着，且
 inner 的"补环境"内容只有他知道**。
+
+
+## 20. Windows-bias 系统性审计（2026-11-02，第一轮）
+
+问题定位反思：引擎源码以 Windows 为第一平台开发校准，mac 是移植——**隐含的
+Windows 行为假设**无法靠对拍发现（对拍只能覆盖"知道该看哪"的面）。第一轮 grep
+审计结果：
+
+| 项 | 状态 |
+| --- | --- |
+| 平台条件编译（`_WIN32` 分支） | 均为合法平台分支（随机源 BCrypt/getentropy 等），无行为差 |
+| timer 精度 `kTimerResolutionUSec=1000`（1ms） | ✓ 与 FF reduceTimerPrecision 默认一致 |
+| **AudioContext 延迟** | ❌ **引擎默认 `baseLatency=0` / `outputLatency=0.04`（state.h）——Windows 采样值**；mac 真值需 CoreAudio 实测（FF159 采集反复失败：headed 会话无音频设备，AudioContext 挂起）——**待办**：真机 DevTools 读一次真值填进 mac profile 的 audio 组 |
+| mediaDevices/clipboard/notification | ⚠️ 有实现，未做值级对拍（第二轮） |
+| socket process（Windows 有、mac 无） | ❌ 架构级：连接复用/时序模式差异的潜在来源，评估成本高 |
+| **macOS timer coalescing / App Nap** | ⚠️ interval 方差的潜在根源（进程 QoS 未设置高精度定时器策略），第二轮验证 |
+
+审计方法论沉淀：引擎里每个"值"有三个可能来源——donor Firefox（同源 ✓）、
+profile 声明（可设定 ✓）、**平台采样（Windows 校准的硬编码）**。第三类就是
+Windows-bias 的藏身处，逐个 grep 常量名可系统性清除。
