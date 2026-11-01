@@ -53,7 +53,7 @@ bool Realm::Install() {
         !JS_DefineProperty(s.cx, object, MethodName(index), member, JSPROP_ENUMERATE) ||
         !s.helpers->Member(member, "console", MethodName(index), "call")) return false;
   }
-  if (!Tag(s.cx, object, "Console") ||
+  if (!Tag(s.cx, object, "console") ||
       !JS_DefineProperty(s.cx, s.page, "console", object, 0)) return false;
   s.console = object;
   return s.helpers->Object("console", object);

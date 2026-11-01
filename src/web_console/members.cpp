@@ -48,7 +48,7 @@ constexpr MethodDef kDefs[] = {
     {"time", "log", kTime},
     {"timeLog", "log", kTimeLog},
     {"timeEnd", "log", kTimeEnd},
-    {"_exception", "error", kException},
+    {"exception", "error", kException},
     {"timeStamp", "log", kTimeStamp},
     {"profile", "log", kProfile},
     {"profileEnd", "log", kProfileEnd},

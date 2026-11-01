@@ -6,6 +6,7 @@
 python .\examples\akamai\akamai.py
 python .\examples\DataDome\datadome.py
 python .\examples\creepjs\creepjs.py
+python .\examples\scrapingcourse\scrapingcourse.py
 ```
 
 示例均支持 `--help`、`--direct` 和 `--proxy http://127.0.0.1:7890`。

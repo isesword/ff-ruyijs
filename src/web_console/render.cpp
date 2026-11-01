@@ -63,6 +63,23 @@ std::string Render(JSContext* cx, JS::HandleValue value) {
   if (value.isObject()) {
     JSObject* object = js::UncheckedUnwrap(&value.toObject());
     const char* name = JS::GetClass(object)->name;
+    // Challenge-research detail: an exception argument renders with its engine
+    // report (message and throw site). JS_ErrorFromException reads the internal
+    // JSErrorReport and runs no page code, so the no-page-code rule above still
+    // holds: page-visible getters and toString stay untouched.
+    JS::RootedObject exception(cx, object);
+    JS::BorrowedErrorReport borrowed(cx);
+    if (JS_ErrorFromException(cx, exception, borrowed)) {
+      const JSErrorReport* report = borrowed.get();
+      std::string text = std::string("[object ") + (name ? name : "Error") + "]";
+      const char* message = report->message().c_str();
+      if (message && *message) text += ": " + std::string(message);
+      const char* filename = report->filename.c_str();
+      if (filename && *filename)
+        text += " @ " + std::string(filename) + ":" +
+                std::to_string(report->lineno);
+      return text;
+    }
     return std::string("[object ") + (name ? name : "Object") + "]";
   }
   if (value.isSymbol()) {

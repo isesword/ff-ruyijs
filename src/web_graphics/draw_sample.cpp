@@ -43,12 +43,21 @@ float FloatOf(uint16_t half) {
 int32_t Unorm8(float component) {
   if (!(component > 0.0f)) return 0;
   if (component > 1.0f) component = 1.0f;
+#ifdef __APPLE__
+  // Apple's ANGLE/Metal clear path is full-precision float32 with
+  // round-to-nearest: clearColor(0.3) reads back 77 on this host, where the
+  // D3D11 mediump tie-down below yields 76.
+  const double scaled = double(component) * 255.0;
+  const int32_t rounded = int32_t(std::lround(scaled));
+  return rounded <= 0 ? 0 : (rounded >= 255 ? 255 : rounded);
+#else
   const float mediump = FloatOf(HalfOf(component));
   const double scaled = FloatOf(HalfOf(mediump * 255.0f));
   if (!(scaled > 0.0)) return 0;
   const double rounded = std::ceil(scaled - 0.5);
   if (rounded <= 0.0) return 0;
   return rounded >= 255.0 ? 255 : int32_t(rounded);
+#endif
 }
 
 // The D3D11 4x UNORM8 resolve, as measured on the reference NVIDIA path with a
