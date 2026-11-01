@@ -330,3 +330,15 @@ stroke AA、行为/时序、未观测动态探测。
 
 对拍资产：`/tmp/probe/cprobe_server.py`:8769 + FF159/ruyijs 双侧 JSON +
 直接 diff 脚本（见会话）；探针可继续加项。
+
+
+## 15. stroke AA 复测：11/11 逐像素一致（同夜，负结果）
+
+逐用例像素对拍（`/tmp/probe/sprobe_server.py`:8769，FF159 与 ruyijs 双侧同页）：
+line45 / line15 / rect / circle / arcHalf / bezier / quad / dash / thin(0.5px) /
+roundCap / miterJoin —— **11/11 用例的 lit 像素数、alpha 总和、全帧 FNV hash
+完全一致**。原因：`skia_native` 链接的就是 FF objdir 的预编译 Skia 对象，而早先
+观测的 alpha 差异已被后续表面修复顺带消除。
+
+至此已知表面差距全部收敛或排除。剩余嫌疑：行为/时序类（advance 泵的 timer
+节奏 vs 真 FF 帧驱动）、window 全局枚举序（已论证接受）、未观测的动态探测。
