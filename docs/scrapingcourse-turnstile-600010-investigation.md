@@ -368,3 +368,23 @@ setTimeout(0..1) 均读 ~2ms；此前我们 0ms 同轮触发是可探测签名�
 构建勘误：`ffvpx_tx_native` 的 stamp 缓存分支未用带目录前缀的对象名，
 缓存 miss 时 fall-through 会把旧对象重复 append（12+14=26）导致链接
 duplicate——缓存与编译两侧已统一 `obj_for()` 命名。
+
+
+## 18. VM 采集面穷举对拍（2026-11-02）：基本字段全一致（同日）
+
+新版挑战（api.js `g/c787ce48cf6b`，invisible 无 iframe 模式，VM 跑在页面 realm）
+的 access log 实测采集面：**navigator 21 字段 + screen 10 + location + viewport +
+storage + locale + history + 8 matchMedia + visibilityState + speech + css.supports
+color**——没有 canvas/WebGL/audio。
+
+穷举对拍（ruyijs 全字段值 vs FF159 DevTools 实测）：**全部一致或自洽**。
+误判排除记录：oscpu（FF159 = "Intel Mac OS X 10.15"，与我们一致）、
+doNotTrack（FF 默认 "unspecified"，一致）、speechSynthesis 首查 voices=0（一致）。
+自洽身份差异（非穿帮）：hardwareConcurrency 8 vs 宿主 12、screen 1440×900/24bit
+vs 宿主 1512×982/30bit——"一台 M1 基础款 mac"是真实存在的配置。
+
+**结论：600010 判分的依据不在任何可枚举的"值"里。** 剩余嫌疑收窄至
+(a) 引擎实现的行为特征（advance 泵响应模式、异常形状等静态对拍不可及项）、
+(b) 网络层服务端信号（头顺序/Cookie/缓存语义/连接复用）、
+(c) CF 每日轮换的新探测。盲找不可持续，向作者索取 Windows 验收清单为
+当前唯一高确定性路径。
