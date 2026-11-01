@@ -305,3 +305,28 @@ harness 喂入了 partials 以上的 bin——仿真与 oracle 的差异本来�
 都已收敛到与真 FF159 不可区分，剩余嫌疑：canvas stroke AA（Skia 路径）、
 行为/时序类信号（timer 节奏、isTrusted 事件流）、或挑战内部某项未观测到的
 动态探测。
+
+
+## 14. 原文对照 + DOM 原型链根断裂（同夜，链根已修）
+
+与公众号原文逐行对照：**脚本层零差异**（作者流程即我们移植的流程，无指纹配置、
+无隐藏步骤，"默认环境和系统时钟"）；作者一键过的本钱是**他打磨多年的 Windows
+`inner` runtime**（SHA256 08237528…）。差距全部在 runtime 表面，不在脚本。
+
+**新实锤：DOM 接口原型链根断裂。** identity 探针（51 项：DOM Collection /
+RegExp / Function / Node identity + console 语义，双侧同页对拍）暴露：在
+ruyijs 里对任何 DOM 原型调 `hasOwnProperty` 直接 **TypeError** —— 页面脚本
+当场崩死。根因：`interaction::InitClassOrdered` 的 `parent_prototype = null`
+分支给了空原型，而 `JS_InitClass(nullptr)` 的语义是把链根接到
+**%Object.prototype%**。修法：null → `JS::GetRealmObjectPrototype(cx)`。
+真 FF159 判据（chain 断言实测）：`EventTarget.prototype` 的 proto 是
+Object.prototype（true）、`Node.prototype.hasOwnProperty` 是 function。
+注：`Function.prototype` 的 proto 在 FF159 里是 **Object.prototype 而非
+自身**（与 V8 不同，勿以 V8 直觉硬编码）。
+
+修复后探针 **51/51 项与 FF159 完全一致（0 differences）**；tests 18/18。
+**Turnstile：仍 600010**（`result-after-protoroot.json`）。剩余嫌疑不变：
+stroke AA、行为/时序、未观测动态探测。
+
+对拍资产：`/tmp/probe/cprobe_server.py`:8769 + FF159/ruyijs 双侧 JSON +
+直接 diff 脚本（见会话）；探针可继续加项。

@@ -106,7 +106,15 @@ bool InitClassOrdered(JSContext* cx, JS::HandleObject page, const JSClass* clasp
                       JSNative constructor, unsigned nargs,
                       const JSPropertySpec* properties, const JSFunctionSpec* methods,
                       JS::MutableHandleObject prototype, JS::MutableHandleObject function) {
-  prototype.set(JS_NewObjectWithGivenProto(cx, clasp, parent_prototype));
+  // A null parent means the interface chain's root: the prototype must chain
+  // to %Object.prototype% (JS_InitClass's nullptr semantics), or every DOM
+  // instance loses hasOwnProperty/toString/call and identity probes throw.
+  JS::RootedObject proto_parent(cx, parent_prototype);
+  if (!proto_parent) {
+    proto_parent = JS::GetRealmObjectPrototype(cx);
+    if (!proto_parent) return false;
+  }
+  prototype.set(JS_NewObjectWithGivenProto(cx, clasp, proto_parent));
   if (!prototype) return false;
   JS::RootedFunction created(cx, JS_NewFunction(cx, constructor, nargs, JSFUN_CONSTRUCTOR, name));
   if (!created) return false;
