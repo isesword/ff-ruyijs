@@ -50,7 +50,14 @@ const char* const kWebGL2Extensions[] = {
     "WEBGL_provoking_vertex"};
 // Firefox 158 limits the ANGLE D3D11 viewport to the D3D11 resource limit
 // (MAX_VIEWPORT_DIMS reported 32767 in the same trace).
+#ifdef __APPLE__
+// Firefox on macOS (Apple ANGLE/Metal) reports 16384 for the viewport and 8192
+// for the texture and renderbuffer limits.
+const int32_t kAngleMaxViewportDim = 16384;
+const int32_t kMetalMaxTextureSize = 8192;
+#else
 const int32_t kAngleMaxViewportDim = 32767;
+#endif
 }  // namespace
 
 struct Model::Impl {
@@ -95,8 +102,13 @@ struct Model::Impl {
     values.unmasked_renderer = set[kUnmaskedRendererField]
                                    ? overrides[kUnmaskedRendererField]
                                    : sanitized;
+#ifdef __APPLE__
+    values.max_texture_size = kMetalMaxTextureSize;
+    values.max_renderbuffer_size = kMetalMaxTextureSize;
+#else
     values.max_texture_size = source.max_texture_size;
     values.max_renderbuffer_size = source.max_renderbuffer_size;
+#endif
     values.max_viewport_dims_width = kAngleMaxViewportDim;
     values.max_viewport_dims_height = kAngleMaxViewportDim;
     values.max_vertex_attribs = source.max_vertex_attribs;

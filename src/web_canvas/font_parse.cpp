@@ -1,6 +1,6 @@
 // The 2D context's font shorthand. Firefox parses ctx.font as the CSS `font`
 // property and keeps the whole font; text measurement only needs the size, the
-// weight, the slant and the first family of the list, which is what this reads.
+// weight, the slant and the family list, which is what this reads.
 // A string this parser cannot accept leaves the caller on the previous font.
 #include "web_canvas/internal.h"
 
@@ -103,24 +103,9 @@ float QuantizeFontSize(float size) {
   return wide - difference;
 }
 
-// The first family of the list, with quotes and the rest of the list removed.
-std::string FirstFamily(const std::string& list) {
-  std::string family;
-  bool quoted = false;
-  char quote = 0;
-  for (size_t index = 0; index < list.size(); ++index) {
-    const char ch = list[index];
-    if (quoted) {
-      if (ch == quote) quoted = false;
-      else family.push_back(ch);
-      continue;
-    }
-    if (ch == '"' || ch == '\'') { quoted = true; quote = ch; continue; }
-    if (ch == ',') break;
-    family.push_back(ch);
-  }
-  return Trim(family);
-}
+// The whole family list, as written: font selection walks it in order and
+// falls through to the next entry (and the generic) when a family is missing.
+std::string FamilyList(const std::string& list) { return Trim(list); }
 }  // namespace
 
 bool ParseCanvasFont(const std::string& shorthand, CanvasFont* out) {
@@ -143,7 +128,7 @@ bool ParseCanvasFont(const std::string& shorthand, CanvasFont* out) {
     if (!FontKeyword(word, out)) return false;
     at = end;
   }
-  const std::string family = FirstFamily(Trim(text.substr(at)));
+  const std::string family = FamilyList(text.substr(at));
   if (family.empty()) return false;
   out->family = family;
   out->size = QuantizeFontSize(float(out->size));

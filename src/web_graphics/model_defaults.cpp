@@ -6,7 +6,13 @@ namespace ruyijs::web_graphics {
 const ParameterDefault* PublicParameterDefault(int32_t name) noexcept {
   using K = ParameterKind;
   static const ParameterDefault values[] = {
+#ifdef __APPLE__
+    // Firefox on macOS (Apple ANGLE/Metal): point size 1..64 and the Metal
+    // limits below, measured against the real browser.
+    {0x846E,K::FloatArray,2,{1,1}}, {0x846D,K::FloatArray,2,{1,64}},
+#else
     {0x846E,K::FloatArray,2,{1,1}}, {0x846D,K::FloatArray,2,{1,1024}},
+#endif
     {0x0D55,K::Number,1,{8}}, {0x0D54,K::Number,1,{8}},
     {0x0D53,K::Number,1,{8}}, {0x0D52,K::Number,1,{8}},
     {0x0BE2,K::Boolean,1,{0}}, {0x0B44,K::Boolean,1,{0}},
@@ -15,10 +21,18 @@ const ParameterDefault* PublicParameterDefault(int32_t name) noexcept {
     {0x0C11,K::Boolean,1,{0}}, {0x0B90,K::Boolean,1,{0}},
     {0x0C22,K::FloatArray,4,{0,0,0,0}}, {0x0C23,K::BoolArray,4,{1,1,1,1}},
     {0x0B70,K::FloatArray,2,{0,1}}, {0x0D56,K::Number,1,{24}},
-    {0x8192,K::Number,1,{4352}}, {0x8B4D,K::Number,1,{32}},
+    {0x8192,K::Number,1,{4352}},
+#ifdef __APPLE__
+    {0x8B4D,K::Number,1,{80}},
+    {0x851C,K::Number,1,{8192}}, {0x8DFD,K::Number,1,{1024}},
+    {0x8DFC,K::Number,1,{32}}, {0x8B4C,K::Number,1,{16}},
+    {0x8DFB,K::Number,1,{1024}}, {0x0D05,K::Number,1,{4}},
+#else
+    {0x8B4D,K::Number,1,{32}},
     {0x851C,K::Number,1,{16384}}, {0x8DFD,K::Number,1,{1024}},
     {0x8DFC,K::Number,1,{30}}, {0x8B4C,K::Number,1,{16}},
     {0x8DFB,K::Number,1,{4095}}, {0x0D05,K::Number,1,{4}},
+#endif
     {0x0CF5,K::Number,1,{4}}, {0x80A9,K::Number,1,{4}},
     {0x80A8,K::Number,1,{1}}, {0x0D57,K::Number,1,{0}},
     {0x0D50,K::Number,1,{4}},

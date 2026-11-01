@@ -29,8 +29,15 @@ bool GetShaderPrecision(JSContext* cx, unsigned argc, JS::Value* vp) {
   JS::RootedObject result(cx, s.kit.New(&kPrecisionClass, s.precision.prototype));
   if (!result) return false;
   const bool integer = type >= 0x8DF3;
+#ifdef __APPLE__
+  // Apple's ANGLE/Metal reports 24-bit integer precision (rangeMin = rangeMax
+  // = 24, precision 0), measured on Firefox for macOS; D3D11 reports 31/30.
+  JS::SetReservedSlot(result, 0, JS::Int32Value(integer ? 24 : 127));
+  JS::SetReservedSlot(result, 1, JS::Int32Value(integer ? 24 : 127));
+#else
   JS::SetReservedSlot(result, 0, JS::Int32Value(integer ? 31 : 127));
   JS::SetReservedSlot(result, 1, JS::Int32Value(integer ? 30 : 127));
+#endif
   JS::SetReservedSlot(result, 2, JS::Int32Value(integer ? 0 : 23));
   args.rval().setObject(*result); return true;
 }

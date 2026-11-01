@@ -55,6 +55,21 @@ bool Record(void* opaque,const resource_network::HttpObservation& observation){
  record.connectEnd=last.connectEnd>0?last.connectEnd:record.connectStart;
  record.secureConnectionStart=UrlValue(last.url).protocol()!="https:"?0:
    last.secureStart>0?last.secureStart:record.connectEnd;
+ // A transport that reports no request/response instants (the macOS Necko
+ // path) leaves responseStart == requestStart (== fetchStart), a zero
+ // time-to-first-byte no real fetch shows. Firefox reads a few ms of queueing
+ // before the request and the first byte shortly before the body ends, so
+ // derive both from the measured end time and the body size.
+ const bool unmeasured=record.responseStart<=record.requestStart&&!target.scheduling->Inspect().logical;
+ if(unmeasured&&record.responseEnd>record.fetchStart+2){
+  const double queued=2;
+  const double total=record.responseEnd-record.fetchStart-queued;
+  const double body=std::min(std::max(double(result.encodedBytes)/1500.0,1.0),total*0.5);
+  record.requestStart=record.fetchStart+queued;
+  record.responseStart=std::max(record.requestStart,record.responseEnd-body);
+  record.domainLookupStart=record.domainLookupEnd=record.connectStart=record.connectEnd=record.requestStart;
+  if(UrlValue(last.url).protocol()=="https:")record.secureConnectionStart=record.requestStart;
+ }
  if(record.requestStart==0)record.requestStart=record.fetchStart;
  if(record.responseStart==0)record.responseStart=record.requestStart;
  access.Apply(record,result.transferred,result.opaqueRedirect);
