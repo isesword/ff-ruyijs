@@ -1,0 +1,464 @@
+{
+ "files": [
+  {
+   "path": "COPYING.LGPLv2.1",
+   "sha256": "246041b6ecf9bc32d718a62c57877c78b5eb397b6467e74ed7ae2626ab189c30"
+  },
+  {
+   "path": "compat/va_copy.h",
+   "sha256": "8d639b4a61c4b3108c76494d79621cfbb40283bbe8951930fb7c76bc75bb1952"
+  },
+  {
+   "path": "config/config.h",
+   "sha256": "b982e4f8cc31676e3c0c5cad7c172cf5367e600e2fb96953e73524236741c05b"
+  },
+  {
+   "path": "libavutil/aarch64/asm.S",
+   "sha256": "0717ba5bccdf9696efe321d6d60a503fe6ef06770a28242f3fccff07ddbe3d25"
+  },
+  {
+   "path": "libavutil/aarch64/bswap.h",
+   "sha256": "083351926fb04fa563fa69282ec2866de52e80538febb1851a1069bd66bfe3e3"
+  },
+  {
+   "path": "libavutil/aarch64/cpu.c",
+   "sha256": "6a2aec05167c658dfd1c7f653372ab6f96c689326ad1434f886300d4130bfc30"
+  },
+  {
+   "path": "libavutil/aarch64/cpu.h",
+   "sha256": "89bd34b0ce1dbdcf106a06564d83d7705b81d91adbc98c4ad9149e3933e8170c"
+  },
+  {
+   "path": "libavutil/aarch64/intreadwrite.h",
+   "sha256": "ff8a9ed510a05ba8724dd024eb77948499a76afdad90e16fe22becedb6134a5c"
+  },
+  {
+   "path": "libavutil/aarch64/timer.h",
+   "sha256": "9d150c0be1cc76b6a4b044c4173b815131c118d1019ba2436b242ae3da30d3ab"
+  },
+  {
+   "path": "libavutil/aarch64/tx_float_init.c",
+   "sha256": "334389d4da468829b63701a64d6e0784ba33bc454b0923f10ce74b38b9aed50b"
+  },
+  {
+   "path": "libavutil/aarch64/tx_float_neon.S",
+   "sha256": "44401359514c722ef065ff3f8f0105f543c7e2192583092d369b0918ab02147f"
+  },
+  {
+   "path": "libavutil/adler32.h",
+   "sha256": "f21a861957bf4b1812ed67fdc528890f9cff1bb483facf0f5109e4a51932fe3b"
+  },
+  {
+   "path": "libavutil/attributes.h",
+   "sha256": "041300e50a7e4c97d5ab3ea8c92d3db637e7047c8cb021f64ead2874391ee954"
+  },
+  {
+   "path": "libavutil/attributes_internal.h",
+   "sha256": "3cc99d4b6f9ca40913bfe539a300ddd84ec9cf15e0fd51d2d7a28405d9dbe8b2"
+  },
+  {
+   "path": "libavutil/avassert.h",
+   "sha256": "986182bd395e6559ec1a20243e540018ac99a64f1cd148f203ab6fbc4878f3ac"
+  },
+  {
+   "path": "libavutil/avconfig.h",
+   "sha256": "6d78a911a2128e926262114c9904209209674e3bc1a18c208c850ecbfc3393ec"
+  },
+  {
+   "path": "libavutil/avstring.h",
+   "sha256": "630d231013e996b10b2c9aec98c569f8f88dc53a425491d435d868172a53ecb0"
+  },
+  {
+   "path": "libavutil/avutil.h",
+   "sha256": "01a511d927eaab20cf57076611ff5649bc6089d2d766c4b20c9d11c3da095efd"
+  },
+  {
+   "path": "libavutil/base64.h",
+   "sha256": "81ac13d23f3744fe85ea2651ce903e201cd55fc63fcdd899d2cfe5560d50ef3d"
+  },
+  {
+   "path": "libavutil/bprint.c",
+   "sha256": "1cbb6437a17aea9fe0dfa1daaa00b2289cb8c965b70a3c69c219c330e89f7e9d"
+  },
+  {
+   "path": "libavutil/bprint.h",
+   "sha256": "5e3800d797fb8f67ffa7917420d3710c759afaca6f84b655fb64bf4dfa4650d2"
+  },
+  {
+   "path": "libavutil/bswap.h",
+   "sha256": "1d985324139f195d3247c3bb59aa7976c074fbaaf85b8b783f88c178c59f48d3"
+  },
+  {
+   "path": "libavutil/buffer.h",
+   "sha256": "f16742d574216434580573a2b09f56fc5b66b7dda1960d4f02ba59e3269ba548"
+  },
+  {
+   "path": "libavutil/buffer_internal.h",
+   "sha256": "0cd37612f88b1889d23234a5739eda0cf4dcb22c23c82bc4bb023696fcf1b4ad"
+  },
+  {
+   "path": "libavutil/channel_layout.h",
+   "sha256": "fbd3246297cd72be45268eacd9229d23247dfe394fb15b6a40ce8773422661c6"
+  },
+  {
+   "path": "libavutil/colorspace.h",
+   "sha256": "fd5b99c2b5a8dff0ff012ca249e1ce5f81c2e645fb96358b2cb1360a2e4e89a8"
+  },
+  {
+   "path": "libavutil/common.h",
+   "sha256": "08f14cf0ea3fede141d3790b30df2ed6edfc5dd81eb3c8181c3a33c314c46bbb"
+  },
+  {
+   "path": "libavutil/container_fifo.h",
+   "sha256": "d8bbe3f1f4dfcdcd56f40618961736ff3bc34fafd81f52ac6c993c91ef43916a"
+  },
+  {
+   "path": "libavutil/cpu.c",
+   "sha256": "417011f6e9e92e191a4714e2bb409aa65d26a23e1765548170803c2cc0192dd7"
+  },
+  {
+   "path": "libavutil/cpu.h",
+   "sha256": "52034bd08c5fa7b476451acb4578152bfd88e650774a92c107c810e820314063"
+  },
+  {
+   "path": "libavutil/cpu_internal.h",
+   "sha256": "50a5bb8254f69d396e7a1adc1f6c40c1a304a1768550e799c1b04c4d0a492412"
+  },
+  {
+   "path": "libavutil/crc.h",
+   "sha256": "5728cf65705a46723ea28b4f6c8361aad82b76a90e859943efe8af0edb79ec86"
+  },
+  {
+   "path": "libavutil/csp.h",
+   "sha256": "2760b91454642f77f88339f39b614da987c806b30ea54b6f6eddb1a7ac3a738e"
+  },
+  {
+   "path": "libavutil/dict.h",
+   "sha256": "b8b7abebb6e5ab5ffa70b8463df52c96d4e774aa2d5574bebbc02f6031e62ad8"
+  },
+  {
+   "path": "libavutil/dict_internal.h",
+   "sha256": "edbcd4e3efacf496f8fcfcfdcad1d7fcbffa268ccb97d4f7999b00a8f03fbe5a"
+  },
+  {
+   "path": "libavutil/display.h",
+   "sha256": "b9c78c80aa9331b945802b6bcd1db4ecc9ec4f9fad41993cc82b880c0dec2576"
+  },
+  {
+   "path": "libavutil/dynarray.h",
+   "sha256": "d94e00c37b220c230b23322a9e1fe24d092eda6ef2353953009727652dd1ee51"
+  },
+  {
+   "path": "libavutil/emms.h",
+   "sha256": "afc84662351523d138b9569899e71195d9b43e8a59eb48b63860088b93944148"
+  },
+  {
+   "path": "libavutil/error.c",
+   "sha256": "c9cfc112efa06ee1bba15498c4d09b9969a57cef87cc71d69360f3b158081aa7"
+  },
+  {
+   "path": "libavutil/error.h",
+   "sha256": "bcf4f7e69c7e0d658ad6e81611810f7cf1f0b8334ebe948d27e518c459e4104c"
+  },
+  {
+   "path": "libavutil/eval.h",
+   "sha256": "68efeaa9b6600ec47dae9031d1f0869818c88083b24fb133de3c2cf73f8adf1f"
+  },
+  {
+   "path": "libavutil/ffmath.h",
+   "sha256": "522d6f0b024ebd05a1f4868439a5513321b45b54e1cae387b430da2acefe66ff"
+  },
+  {
+   "path": "libavutil/fftime.h",
+   "sha256": "40e11fa242e0585996753affb054443e78be25919b7c3063042d0aaff1656760"
+  },
+  {
+   "path": "libavutil/ffversion.h",
+   "sha256": "631229e000675a4c93a0971b04d364f1a70b9ed7148e091859aeb4db9051ad8d"
+  },
+  {
+   "path": "libavutil/fifo.h",
+   "sha256": "9d6e9a6db887d32ee3f4bdafab68869d00f9d89590e33718922c37067eb7f5fe"
+  },
+  {
+   "path": "libavutil/file_open.h",
+   "sha256": "0be8fce1e9d9b47bc5c4028f2c25defaf14a12f46b749e926780911344d15834"
+  },
+  {
+   "path": "libavutil/film_grain_params.h",
+   "sha256": "414d2755769a6993d0c3f4b5a7e92e22a558675f0c49b44df3afc876473e825c"
+  },
+  {
+   "path": "libavutil/fixed_dsp.h",
+   "sha256": "d7769bf6ace8000b8486ada216c894712f3263849d4c8e4273a926a29d8aea76"
+  },
+  {
+   "path": "libavutil/float_dsp.h",
+   "sha256": "e93703c6140f2e69312ed404003b024558fc37a5d40af5e4829a860707a254c7"
+  },
+  {
+   "path": "libavutil/frame.h",
+   "sha256": "2eb83475589dbe72d9dbbb5367370b7c1384fbb20afffbcf482de0437b6eaf8e"
+  },
+  {
+   "path": "libavutil/hdr_dynamic_metadata.h",
+   "sha256": "a33138bdb7eea6c7895c8daa2cfcdf6eec5bea0774d40f4d62051426ddab8678"
+  },
+  {
+   "path": "libavutil/hdr_dynamic_vivid_metadata.h",
+   "sha256": "91580e9f4eb39ef296365aa756ef48a170b57c07b288be4bb10affd98ede83f2"
+  },
+  {
+   "path": "libavutil/hwcontext.h",
+   "sha256": "229c918d0809dbbaa0aaebd18848bece039ad458538f0fcafc11015fd2111fc2"
+  },
+  {
+   "path": "libavutil/hwcontext_d3d11va.h",
+   "sha256": "ac6ffe37fb89e9b935c2654cebd931f78972b960cd16406dfe9cc2b80869eef9"
+  },
+  {
+   "path": "libavutil/hwcontext_drm.h",
+   "sha256": "b598f37f40cf1342f923c0b97784a6f2830b543868eccee046375e096fbd5f24"
+  },
+  {
+   "path": "libavutil/hwcontext_internal.h",
+   "sha256": "a7fd5ad20665467bd3fa240b1002bc7770c4e4b47851c4cc4b0c4067132031db"
+  },
+  {
+   "path": "libavutil/hwcontext_mediacodec.h",
+   "sha256": "8c602859ebca906ba6e43ea548ff28821cf2886b4500b2be1deaaf2d552496d4"
+  },
+  {
+   "path": "libavutil/hwcontext_vaapi.h",
+   "sha256": "5a63f50d3f1972b63038f03e005d53d8e666f119d8015f07038312c713aaf0f1"
+  },
+  {
+   "path": "libavutil/hwcontext_vulkan.h",
+   "sha256": "aeb211e2a4c97eac7fd2ff8908e57b075dc2a125f66a2fe47e770c8cf7cc2634"
+  },
+  {
+   "path": "libavutil/imgutils.h",
+   "sha256": "8e0055fd86fb10b7c9e435e9375736b6db201cb9930a38fb4ff1e1a1da8e0cff"
+  },
+  {
+   "path": "libavutil/imgutils_internal.h",
+   "sha256": "6d12dc1618137df23d8d212a1eb36f0dd74e0d6f960572404c1c1c4671049ec2"
+  },
+  {
+   "path": "libavutil/integer.h",
+   "sha256": "dbf7fdb81054145f213cb4d7a89f2668923f88ea8ec1f0e5677ad0913b412a00"
+  },
+  {
+   "path": "libavutil/internal.h",
+   "sha256": "ba779e92597fd8d11a50cec2afb9fcb95b7f7cb6a6f06280b4af28f3461de083"
+  },
+  {
+   "path": "libavutil/intfloat.h",
+   "sha256": "3a29e4eebc8c269cfd867b96de91d8231773d392c12a8820e46eaba96d2b4ca1"
+  },
+  {
+   "path": "libavutil/intmath.h",
+   "sha256": "25f09b4e16dd8edd21cba932f1503d5bc361bd5a6b3993e3cdd82b747128ab53"
+  },
+  {
+   "path": "libavutil/intreadwrite.h",
+   "sha256": "6e9c404e70f71a02208af81910434e47c501cbe1b0a80116e731cb673f98c734"
+  },
+  {
+   "path": "libavutil/libm.h",
+   "sha256": "e7f4417fba09554b12fb0cdb36ce72b7d24b2d2bfb9865b2bde1056ad0f72131"
+  },
+  {
+   "path": "libavutil/lls.h",
+   "sha256": "5892cad723984a126c9937966b62eb03d23ca1f73cf63b5c2bc2c7a16ff3b171"
+  },
+  {
+   "path": "libavutil/log.c",
+   "sha256": "e681936dbe79160dfd66043bb3f7d5154b4f33921a3963248abfec7f2041490b"
+  },
+  {
+   "path": "libavutil/log.h",
+   "sha256": "b8ef46be6210baadb3ad61eb72ee48e7dd7d6be39c17c3a8bbc8c81ba9e26110"
+  },
+  {
+   "path": "libavutil/macros.h",
+   "sha256": "b63b3a268b096f0eed1e91b821714cff334e5dc5bb34365148704393ae15321e"
+  },
+  {
+   "path": "libavutil/mastering_display_metadata.h",
+   "sha256": "dbb1584931d4d8ff7d7a868b519097b6d92f0426d781543987cb784f80ba973a"
+  },
+  {
+   "path": "libavutil/mathematics.c",
+   "sha256": "c38b36d09a886b8a0471fa1c8f0174a1a852f437011d818569ece3824b1d4b6b"
+  },
+  {
+   "path": "libavutil/mathematics.h",
+   "sha256": "e85c71fb77b0fe7823a88db904982e2a9b953e806ced0714fe6cc6b8a0951469"
+  },
+  {
+   "path": "libavutil/mem.c",
+   "sha256": "3c7b582afc95286585560b7c805d078207c88bb7504ed2e840dfad3bc47a2a89"
+  },
+  {
+   "path": "libavutil/mem.h",
+   "sha256": "bf9a1d8c218c38b333efb16be076c5778d31d66a0691bdd6175f171c08283d7c"
+  },
+  {
+   "path": "libavutil/mem_internal.h",
+   "sha256": "cfa03ed880bba87fac53e899e109c0b3080831f8a007c436761c7a1ac35084d6"
+  },
+  {
+   "path": "libavutil/opt.h",
+   "sha256": "ed473055a2c58dc24bc560d9c86dbbc51558c3e87836f1c0869011130783d999"
+  },
+  {
+   "path": "libavutil/parseutils.h",
+   "sha256": "e8efed69396851f429a8258d50e9c4f0431f921687a7c31bf6db13d14f7482c3"
+  },
+  {
+   "path": "libavutil/pixdesc.h",
+   "sha256": "4dc17f708daedb294fd3aa7ec1940f4b9a504518b4d4813be83db605ac13494d"
+  },
+  {
+   "path": "libavutil/pixelutils.h",
+   "sha256": "339cd6ffb6460d06401801c5dfb91ca66b9bdc028e1acc9ff4a0f447cfd3785c"
+  },
+  {
+   "path": "libavutil/pixfmt.h",
+   "sha256": "6a8f5a61fe8d3bda60a62e59cc15237f61555ebd77adf477fc6d69ab8e609f77"
+  },
+  {
+   "path": "libavutil/qsort.h",
+   "sha256": "dd90277c1afd4aaaadabecc3524e417829fcab5324a2149a338f5eb5eda0754c"
+  },
+  {
+   "path": "libavutil/random_seed.h",
+   "sha256": "4490fd79919aadb18f765caac0c210d22cafa4d63cddcf9275e6f5bf66e2fdea"
+  },
+  {
+   "path": "libavutil/rational.h",
+   "sha256": "f4fb850924b414f9ca35579df4e50d6f406734eb9735bbfbf388ae22ec5a0a9c"
+  },
+  {
+   "path": "libavutil/refstruct.h",
+   "sha256": "8e7be80109d14fce52e3de7a30932efea283abe963ccdd755787e219a4699b19"
+  },
+  {
+   "path": "libavutil/replaygain.h",
+   "sha256": "4ec82edbdc4e5493fba3cae6a27566f0f15d1399ccf16e25073ffd50ba8187ea"
+  },
+  {
+   "path": "libavutil/reverse.h",
+   "sha256": "7021f8d31b74233859d159ef8108ebe19d2e5e30c2025a728f23009e3233cc9e"
+  },
+  {
+   "path": "libavutil/samplefmt.h",
+   "sha256": "bec4e2708b42a026450c1227e137661f71850698f19b89f6e9f721fe993f56a9"
+  },
+  {
+   "path": "libavutil/sfc64.h",
+   "sha256": "b46a69f834bd68ef1f3b3240e7cb25291e308c7f806800f40a0adb4bbb9f1013"
+  },
+  {
+   "path": "libavutil/side_data.h",
+   "sha256": "2929d28b32d4d260e39fc79807dda94ecd3a7cc74730c3cfb7ebcce333a976a6"
+  },
+  {
+   "path": "libavutil/slicethread.h",
+   "sha256": "790fbd5e84ca486fc26e420203d90a0a6ca113dc1b0dab052aa9fd4310962611"
+  },
+  {
+   "path": "libavutil/stereo3d.h",
+   "sha256": "32cc28caac01b5bf18ae016af4b0ffffbe40feb77e96cb434d723954a83b776a"
+  },
+  {
+   "path": "libavutil/thread.h",
+   "sha256": "6b33c7d1c8b801be17a8cfbbd70c437a5a08c706e626ba4a31c228a13faf74b3"
+  },
+  {
+   "path": "libavutil/threadmessage.h",
+   "sha256": "9bb242d7adc48662b947726843108aff7c34547d7a4a0d0e6f58f54a00fc4c9f"
+  },
+  {
+   "path": "libavutil/time.c",
+   "sha256": "3db51a4ca192b7ecf9c35a818caa283c394b481ab459c35a6376f63b3e2db882"
+  },
+  {
+   "path": "libavutil/time_internal.h",
+   "sha256": "a67628259c30eb05cb0c167f145dc7c31fafeaa5ba85da994645ea791f7bdb58"
+  },
+  {
+   "path": "libavutil/timecode.h",
+   "sha256": "20936b639afa89e7a356bd5f5317b33745b1f4c3d467486ad043cb9b5d51527a"
+  },
+  {
+   "path": "libavutil/timecode_internal.h",
+   "sha256": "43ae575b72b85fb333e7c484a6f8bf0f56fd2fe3a0ac348e46e554e0877b25e1"
+  },
+  {
+   "path": "libavutil/timer.h",
+   "sha256": "4bd5a6d0f6fc1d383fc750683b459686e5c9a0d7bd927bb669de797d361cebf6"
+  },
+  {
+   "path": "libavutil/timestamp.h",
+   "sha256": "dfd2e2071577f04ddc3cae200abd96ba0fb7d38f53359025af319d4b902f1947"
+  },
+  {
+   "path": "libavutil/tx.c",
+   "sha256": "3f1f684304caef613295ebe3b90d5d47eb19b0211649d980c6ddb2c74f1df9d0"
+  },
+  {
+   "path": "libavutil/tx.h",
+   "sha256": "a1c5c309f493cc22f4637e67696581be676cd33fdcaa0661a01f5bb4345c900a"
+  },
+  {
+   "path": "libavutil/tx_double.c",
+   "sha256": "b206489bfc9ed4adf832915ccd97ccdf19214dee39500ddd6a23a8c7916e8f65"
+  },
+  {
+   "path": "libavutil/tx_float.c",
+   "sha256": "52f854b317d0e4fc8360332a0b1a478af6adb1c8a5a0bd4c6c6af880106ce75c"
+  },
+  {
+   "path": "libavutil/tx_int32.c",
+   "sha256": "8f42ddaf87afba8e92d8a232bcdb0c48ab7978a9ec18d8325c24e9034103b4b3"
+  },
+  {
+   "path": "libavutil/tx_priv.h",
+   "sha256": "c3db88b6eb58c8837bfcf3992872376244142d155efe1b03a8b0fe83825434ac"
+  },
+  {
+   "path": "libavutil/tx_template.c",
+   "sha256": "b3c4becdffefd82321069775b80bb542e577fb6ad229ea6bda3570d98d76e130"
+  },
+  {
+   "path": "libavutil/uuid.h",
+   "sha256": "e669ce76a6b987e189b4d7ff62d0fd9ad6e334fa4967076cc6d912976574b646"
+  },
+  {
+   "path": "libavutil/version.h",
+   "sha256": "0f2ba770c0abe2e341e1e52d34b0f092649a78169945956725b0afb9869a7766"
+  },
+  {
+   "path": "libavutil/video_enc_params.h",
+   "sha256": "f287486c4f828f82e579f93ea98fccb98749129544f660decfa56da6f818fd57"
+  },
+  {
+   "path": "libavutil/vulkan.h",
+   "sha256": "6862c9647fd94b37af058ab59f1156dbb94603d0ebc9e68eade5b389f193b814"
+  },
+  {
+   "path": "libavutil/vulkan_functions.h",
+   "sha256": "2e2a1e8f64cdf4c9b48ae33fd1e2b56c130016f7a64c30b716a44b209c697423"
+  },
+  {
+   "path": "libavutil/vulkan_loader.h",
+   "sha256": "5e0e881b327321ce965f98baa436d5664ebcaa1cafa872903e06c23de7130d7a"
+  },
+  {
+   "path": "libavutil/wchar_filename.h",
+   "sha256": "2948abc29eea742de7021d6b58dc39f28c9965feb6a9999ec259d3f2d30fbad7"
+  }
+ ]
+}

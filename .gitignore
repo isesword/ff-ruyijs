@@ -48,6 +48,7 @@
 !/tools/skia_native.py
 !/tools/rust_runtime.py
 !/tools/urlpattern_native.py
+!/tools/ffvpx_tx_native.py
 !/tools/wheel_runtime.py
 __pycache__/
 # Runtime components (embedded Python, wheels, derived Necko) ship with releases.
@@ -58,6 +59,7 @@ __pycache__/
 !/vendor/compression-native/
 !/vendor/image-native/
 !/vendor/urlpattern-native/
+!/vendor/ffvpx-tx-native/
 /vendor/necko-native/**/*.dll
 /native/necko_quic/Cargo.lock
 *.py[cod]

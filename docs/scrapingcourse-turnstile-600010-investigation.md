@@ -278,3 +278,30 @@ fma3 codelet，我们仿真正确；mac 上 FF 换 NEON 后端，我们没跟上
 集中在叶子核（NEON 用 FFT8_X2/FFT16 4-lane 宏，lane 序经 zip/trn/rev64/ext 重排）与
 SR_COMBINE 族（fmla/fmls 顺序 + v31=(-1,1,-1,1) 符号乘），主循环按 32/64/128/256/512
 递归重入、存储按 stp 交错布局。
+
+
+## 13. 落地：音频表生成与真 Firefox bit-exact（同晚）
+
+按 §12 的方向落地，方案从"逐 lane 仿真 NEON"切换为"链接真 ffvpx"：
+
+- 新 `vendor/ffvpx-tx-native/`：冻结 Firefox 159 ffvpx 的 av_tx 源码
+  （`manifest.json` 逐文件 SHA-256 校验），含 aarch64 NEON 汇编变换与
+  `config_darwin_aarch64.h`。LGPL-2.1-or-later，以**独立可重链接目标文件**参与
+  链接（Mozilla ffvpx 同款安排；引擎源码零头文件耦合，仅 `av_tx_init`/
+  `av_tx_uninit` 自声明 C 接口），见目录内 README。
+- `tools/ffvpx_tx_native.py`：仅 macOS arm64 启用，编译 tx/bprint/log/mem/
+  error/cpu/mathematics/time + NEON 汇编为独立对象；其他平台保持
+  `split_radix_fft.h` 仿真。
+- `periodic_wave_table.h`：arm64 mac 上 `BandLimitedWave` 直接以 FFTBlock 的
+  参数（scale 1.0、复数元素 stride）驱动真 RDFT；仿真路径保留为回退。
+
+**验证**：harness 内 our-fold vs oracle-fold **0 差异（2049/2049）**；引擎音频
+triangle 10kHz sum = `28074.93179304037` 与真 FF159 **完全相等**，head 64/64
+样本 bit-identical。`tests/test_macos_runtime.py` 18/18 PASS，iframe 实验无退化。
+（勘误：此前 suspicion 表的"仿真 fold"与 oracle 有别的假象，一部分来自
+harness 喂入了 partials 以上的 bin——仿真与 oracle 的差异本来就只在 subtx。）
+
+**Turnstile：仍 600010**（`result-after-audio.json`）。至此枚举表面与音频表面
+都已收敛到与真 FF159 不可区分，剩余嫌疑：canvas stroke AA（Skia 路径）、
+行为/时序类信号（timer 节奏、isTrusted 事件流）、或挑战内部某项未观测到的
+动态探测。

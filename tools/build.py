@@ -19,6 +19,7 @@ import geometry_fonts
 import binding_order
 import sanitizer_data
 import compression_native
+import ffvpx_tx_native
 import urlpattern_native
 import image_native
 import rust_runtime
@@ -331,6 +332,7 @@ def main():
         executable = destination / shell_name
         if not args.pristine:
             objects += compression_native.build(native)
+            objects += ffvpx_tx_native.build(native)
             objects += urlpattern_native.build(native)
             if sys.platform != "darwin":
                 objects += rust_runtime.build(native)
