@@ -342,3 +342,18 @@ roundCap / miterJoin —— **11/11 用例的 lit 像素数、alpha 总和、全
 
 至此已知表面差距全部收敛或排除。剩余嫌疑：行为/时序类（advance 泵的 timer
 节奏 vs 真 FF 帧驱动）、window 全局枚举序（已论证接受）、未观测的动态探测。
+
+
+## 16. 行为/时序对拍（2026-11-02，三个软信号偏差）
+
+`/tmp/probe/tprobe_server.py`:8769 双侧同页（FF159 headed vs ruyijs advance 泵）：
+
+| 项 | FF159 | ruyijs | 判定 |
+| --- | --- | --- | --- |
+| setTimeout(0..100ms) 实际漂移 | 2/2/5/10/50/100 | 0/2/5/12/53/102 | setTimeout(0) 我们 0ms 立即触发，FF ≥2ms（可测、可修） |
+| setInterval 20ms ×20 | 19–21ms 稳定 ±1 | 前 10 拍 22–26，后 20–24 | advance 泵的 RPC 间隙造成 interval 方差偏大（架构性软信号） |
+| performance.now 200 快读 | 1 个唯一值（1ms 网格强截断） | 2 个唯一值、跨格 | 网格截断方向微妙差异（CF 经典探测；修前需精测 FF 网格语义） |
+| 嵌套 clamp / clockDrift / rAF(250ms) / timer 触发序 | 3–5ms / 1ms / 17 / 同序 | 4–7ms / 0ms / 16 / 同序 | ✓ 一致 |
+
+结论：时序不是功能性断裂，是**统计性软信号偏差**（风险分加权项，非硬门槛）。
+最值得修的是 setTimeout(0) 最小延迟；interval 方差源于 advance 泵架构。
