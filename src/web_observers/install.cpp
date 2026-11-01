@@ -47,7 +47,7 @@ bool NewInterface(State& state, const char* name, unsigned length, JSNative cons
   JSContext* cx = state.cx;
   JS::RootedObject proto(cx, JS_NewPlainObject(cx));
   JS::RootedObject ctor(cx, Function(state, constructor, name, length, 0, JSFUN_CONSTRUCTOR));
-  if (!proto || !ctor ||
+  if (!proto || !ctor || !LeadFunctionKeys(cx, ctor) ||
       !JS_DefineProperty(cx, ctor, "prototype", proto, JSPROP_READONLY | JSPROP_PERMANENT) ||
       !Tag(cx, proto, name) ||
       !state.helpers->Constructor(name, ctor) ||
@@ -166,10 +166,12 @@ bool Realm::Install() {
                                        "attributeNamespace", "oldValue"};
   for (int32_t slot = 0; slot < 9; ++slot)
     if (!Member(s, recordPrototype, fields[slot], slot)) return false;
-  if (!JS_DefineProperty(s.cx, recordConstructor, "prototype", recordPrototype,
+  if (!LeadFunctionKeys(s.cx, recordConstructor) ||
+      !JS_DefineProperty(s.cx, recordConstructor, "prototype", recordPrototype,
                          JSPROP_READONLY | JSPROP_PERMANENT) ||
       !LinkInterface(s, recordPrototype, recordConstructor) ||
       !Tag(s.cx, recordPrototype, "MutationRecord") ||
+      !LeadFunctionKeys(s.cx, observerConstructor) ||
       !JS_DefineProperty(s.cx, observerConstructor, "prototype", observerPrototype,
                          JSPROP_READONLY | JSPROP_PERMANENT) ||
       !JS_DefineProperty(s.cx, observerPrototype, "constructor", observerConstructor, 0) ||
