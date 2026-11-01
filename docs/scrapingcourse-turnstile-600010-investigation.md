@@ -265,3 +265,16 @@ fma3 codelet，我们仿真正确；mac 上 FF 换 NEON 后端，我们没跟上
 顺序与 lane 排布）逐指令翻译为 C++/NEON 内建，替换 `split_radix_fft.h` 的 butterfly，
 用逐样本对拍（engine vs 真 FF159 经 audio probe）验证 bit-exact。Windows 路径不受影响
 （派发按平台）。
+
+**对拍 rig 已就绪**（`/tmp/probe/`：`audio_server.py`:8769 + `run_audio_ruyi.py` +
+`audio_diff.py`；FF159 headed 采集同轮完成）。triangle 10000Hz 的确定性靶值：
+
+- FF159 sum = `28074.93179304037`，我们 = `28074.931769745912`
+- 首个分歧 `head[7]`：FF `0xBD7C05BF` vs 我们 `0xBC7C05BF`（同指数，尾数 1 ULP）
+- head 64 样本 51 个 bit 相同
+
+翻译完成后 `audio_diff.py` 应报告 head 64/64 bit-identical 且 sum 相等。我们的现有实现
+（`split_radix_fft.h`）是 C 模板（fma3 codelet）的忠实仿真，结构可直接复用：NEON 版差异
+集中在叶子核（NEON 用 FFT8_X2/FFT16 4-lane 宏，lane 序经 zip/trn/rev64/ext 重排）与
+SR_COMBINE 族（fmla/fmls 顺序 + v31=(-1,1,-1,1) 符号乘），主循环按 32/64/128/256/512
+递归重入、存储按 stp 交错布局。
