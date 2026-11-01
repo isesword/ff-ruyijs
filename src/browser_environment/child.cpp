@@ -16,6 +16,20 @@ Environment::Environment(JSContext* cx, JS::HandleObject page, Environment& pare
   state_->agentClusters = owner->agentClusters;
   // The initial about:blank document has its creator's origin and agent.
   state_->originKeyed = owner->originKeyed;
+  // A child realm answers from the one context-wide configuration, exactly as
+  // the donor does (one GPU, one canvas/fonts environment in every frame): the
+  // buffered groups are plain data each owner reads when it binds. Only the
+  // buffers are adopted; ports bind per realm (a worker reads its creator's
+  // buffered "webgl" group the same way, and Succession adopts these below).
+  state_->webglGroup = owner->webglGroup.get();
+  state_->gpuGroup = owner->gpuGroup.get();
+  state_->permissionsGroup = owner->permissionsGroup.get();
+  state_->geolocationGroup = owner->geolocationGroup.get();
+  state_->speechGroup = owner->speechGroup.get();
+  state_->mediaGroup = owner->mediaGroup.get();
+  for (size_t index = 0; index < kOwnerGroupCount; ++index) {
+    state_->owners[index].group = owner->owners[index].group.get();
+  }
 }
 // A later top-level document of the same traversable: a new Window over the
 // first document's Model. The buffered profile groups are plain data the
@@ -30,6 +44,10 @@ Environment::Environment(JSContext* cx, JS::HandleObject page, Environment& prev
   state_->permissionsGroup = old.permissionsGroup.get();
   state_->geolocationGroup = old.geolocationGroup.get();
   state_->speechGroup = old.speechGroup.get();
+  state_->mediaGroup = old.mediaGroup.get();
+  for (size_t index = 0; index < kOwnerGroupCount; ++index) {
+    state_->owners[index].group = old.owners[index].group.get();
+  }
   state_->agentClusters = old.agentClusters;
 }
 // HTML "obtain a similar-origin window agent": an origin already in the
