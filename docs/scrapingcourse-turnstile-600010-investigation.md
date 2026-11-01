@@ -241,3 +241,27 @@ iframe 传播实验回归无退化。
 真 FF159 收敛到 diff-engine 分辨率内（除上述 2 项），600010 的触发点在表面之外——剩余嫌疑
 按序：音频表生成 ULP（blink FFTFrame 移植）、canvas stroke AA、行为/时序类信号、或某项
 未入枚举面的动态探测。
+
+## 12. 后续：window 顺序否决 + 音频 ULP 真根因（同晚）
+
+**window 全局顺序（§10 遗留项 a）：pass 方案否决。** 投影实验：7 个不可配置键
+（undefined/NaN/Infinity + unforgeable 的 window/document/location/top）物理上不可移动；
+donor 把 NaN/Infinity 插在序列中部（50/51）、四个 unforgeable 插在尾部（975-978），
+我们这 7 键聚在头部，可配置序列即使按 donor 序重排也整体错位——投影匹配 **9/987（1%）**。
+100% 对齐需要 SM 全局惰性解析序（NaN/Infinity 位置引擎不可控）+ unforgeable 定义点手术，
+且 donor 相对序（window, document, location, top）与现状（window, top, location, document）
+不同。收益/风险比不成立，**记录为接受项**：全序对比型探测本就会在其它差异上失败，
+presence/排序型探测与顺序无关。
+
+**音频 1 ULP 的真根因（修正此前"blink FFTFrame 未移植"的判断）。** 我们的
+`domain/audio/periodic_wave_table.h` 早已是 ffvpx 仿真（ff_tx_rdft_c2r 折叠 + split-radix
+逆变换），但仿真的是 **x86 `fft_sr_float_fma3` codelet** 的舍入。FF159 的 aarch64 codelet 表
+（`media/ffvpx/libavutil/aarch64/tx_float_init.c`）显示 mac arm64 实际派发到 **NEON 手写汇编**
+`ff_tx_fft_sr_float_neon`（64..131072 全长覆盖），融合与排序与 FMA3 不同——这就是
+sample-7 1 ULP 的来源。**这也解释了 Windows 过/mac 挂的不对称**：Windows 上 FF 跑
+fma3 codelet，我们仿真正确；mac 上 FF 换 NEON 后端，我们没跟上。
+
+下一步（半天到一天）：把 `tx_float_neon.S` 的 `ff_tx_fft_sr_float_neon`（含 fmla/fmul
+顺序与 lane 排布）逐指令翻译为 C++/NEON 内建，替换 `split_radix_fft.h` 的 butterfly，
+用逐样本对拍（engine vs 真 FF159 经 audio probe）验证 bit-exact。Windows 路径不受影响
+（派发按平台）。
