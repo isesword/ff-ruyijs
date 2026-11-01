@@ -37,6 +37,10 @@ def build(native):
     config = source / 'config'
     flags = ['-DHAVE_AV_CONFIG_H', '-I' + str(config), '-I' + str(source),
              '-I' + str(source / 'libavutil')]
+    def obj_for(unit):
+        stem = Path(unit).stem
+        return directory / ((Path(unit).parent.name + '_' if unit.count('/') > 1
+                             else '') + stem + '.o')
     c_units = ['libavutil/tx.c', 'libavutil/tx_float.c', 'libavutil/bprint.c',
                'libavutil/log.c', 'libavutil/mem.c', 'libavutil/error.c',
                'libavutil/cpu.c', 'libavutil/tx_double.c', 'libavutil/tx_int32.c',
@@ -54,7 +58,7 @@ def build(native):
     if stamp.is_file() and json.loads(stamp.read_text('utf8')).get(
             'signature') == signature and not native.incremental['disabled']:
         for unit in c_units + asm_units:
-            obj = directory / (Path(unit).stem + '.o')
+            obj = obj_for(unit)
             if obj.is_file():
                 objects.append(obj)
                 expected[obj.name] = digest(obj)
@@ -62,20 +66,14 @@ def build(native):
                 digest(p) == expected[p.name] for p in objects):
             return objects
     for unit in c_units:
-        stem = Path(unit).stem
-        if unit.count('/') > 1:
-            stem = Path(unit).parent.name + '_' + stem
-        obj = directory / (stem + '.o')
+        obj = obj_for(unit)
         command = native.compile_foreign(source / unit, obj, flags)
         completed = subprocess_run(command)
         if completed != 0:
             raise RuntimeError('ffvpx-tx compile failed: ' + unit)
         objects.append(obj)
     for unit in asm_units:
-        stem = Path(unit).stem
-        if unit.count('/') > 1:
-            stem = Path(unit).parent.name + '_' + stem
-        obj = directory / (stem + '.o')
+        obj = obj_for(unit)
         command = native.compile_foreign(source / unit, obj, flags)
         completed = subprocess_run(command)
         if completed != 0:
@@ -85,6 +83,8 @@ def build(native):
         {'signature': signature,
          'outputs': {p.name: digest(p) for p in objects}}, indent=1) + '\n',
         'utf8')
+    import sys as _sys
+    print(f'ffvpx-tx: returning {len(objects)} objects', file=_sys.stderr)
     return objects
 
 

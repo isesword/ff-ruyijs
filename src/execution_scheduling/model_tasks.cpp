@@ -12,6 +12,10 @@ Status Model::Schedule(Kind kind, int32_t delay, uint64_t* id) noexcept {
   const unsigned nesting = std::min(5u, loop.clock().running_nesting + 1);
   double duration = std::max(0, delay);
   if (timer && nesting >= 5) duration = std::max(4.0, duration);
+  // Firefox answers ~2ms for a zero or negative top-level timeout (timer
+  // resolution plus the dispatch hop); firing in the same pump round reads
+  // as a 0ms gap, an observable signature.
+  if (kind == Kind::Timeout && nesting < 5) duration = std::max(duration, 2.0);
   if (kind == Kind::Frame) {
     const double now = loop.current_time().ms();
     duration = (std::floor(now / domain::Duration::FRAME_MS) + 1) * domain::Duration::FRAME_MS - now;

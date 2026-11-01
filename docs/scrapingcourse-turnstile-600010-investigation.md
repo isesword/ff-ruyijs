@@ -357,3 +357,14 @@ roundCap / miterJoin —— **11/11 用例的 lit 像素数、alpha 总和、全
 
 结论：时序不是功能性断裂，是**统计性软信号偏差**（风险分加权项，非硬门槛）。
 最值得修的是 setTimeout(0) 最小延迟；interval 方差源于 advance 泵架构。
+
+
+## 17. setTimeout(0) 最小延迟已修（同日）
+
+`Model::Schedule`：顶层 Timeout 的 duration clamp 到 ≥2ms（FF159 实测
+setTimeout(0..1) 均读 ~2ms；此前我们 0ms 同轮触发是可探测签名）。复测：
+我们读 3ms（2ms 网格 + 泵间隙），FF 2ms——量级一致 ✓。tests 18/18。
+
+构建勘误：`ffvpx_tx_native` 的 stamp 缓存分支未用带目录前缀的对象名，
+缓存 miss 时 fall-through 会把旧对象重复 append（12+14=26）导致链接
+duplicate——缓存与编译两侧已统一 `obj_for()` 命名。
