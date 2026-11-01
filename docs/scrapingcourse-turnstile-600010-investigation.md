@@ -442,3 +442,14 @@ AudioContext 延迟实测：FF159 = `baseLatency 0 / outputLatency 0 / 48000Hz`
 （本机 headed 会话无音频输出设备），与我们引擎默认值**完全一致**——"Windows
 采样默认值"嫌疑被真值推翻。审计方法论强化：**审计发现的嫌疑也必须真值验证**，
 "平台值理论上应该不同"的推理不能替代实测。
+
+
+### §20 第二轮（同日）：mediaDevices 摄像头缺失已修
+
+值级对拍（enumerateDevices/constraints/notification/permissions/clipboard，13 项）
+捕获真实差异：**`enumerateDevices` 缺 videoinput**——FF159 mac 报内置麦克风 +
+摄像头两个未授权设备（label/id 全空），我们只有 audioinput。设备数是经典指纹项
+（"这台机器没有摄像头"）。修复：默认设备列表补 videoinput（state.h）。复测
+**12/13 一致**（唯一残差是基准文件里 FF 消息被截断的假差，实际 13/13）；
+tests 18/18。其余项（constraints 集合、notification、permissions、clipboard
+拒绝消息）全部一致。

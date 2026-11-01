@@ -33,10 +33,11 @@ struct State {
       audioDecoder, audioEncoder, videoDecoder, videoEncoder, encodedAudioChunk, encodedVideoChunk;
   interaction::Realm& events;
   browser_environment::Environment& environment;
-  // The "media" group's effective values. The device list starts at Firefox's
-  // one un-granted audio input; decoding answers keyed by the page's own
+  // The "media" group's effective values. The device list starts at the
+  // built-in microphone and camera an un-granted mac reports (empty labels
+  // and ids until permission); decoding answers keyed by the page's own
   // contentType string override the domain table for that content type only.
-  std::vector<MediaDevice> devices{{"audioinput", "", "", ""}};
+  std::vector<MediaDevice> devices{{"audioinput", "", "", ""}, {"videoinput", "", "", ""}};
   std::map<std::string, domain::web_media::Capability> decoding;
   JS::PersistentRootedObject navigator, device, capabilitiesObject, mediaSession, imageRectPrototype,
       mediaStreamErrorPrototype;
