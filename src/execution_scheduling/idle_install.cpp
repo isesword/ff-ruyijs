@@ -28,6 +28,7 @@ bool InstallIdle(State& s,JS::HandleObject page,PageHelpers& helpers){
     !JS_DefineProperty(cx,prototype,"didTimeout",timeout,noSetter,JSPROP_ENUMERATE)||
     !JS_DefineProperty(cx,prototype,"constructor",ctor,0)||
     !JS_DefinePropertyById(cx,prototype,id,tag,JSPROP_READONLY)||
+    !LeadFunctionKeys(cx,ctor)||
     !JS_DefineProperty(cx,ctor,"prototype",prototype,JSPROP_READONLY|JSPROP_PERMANENT)||
     !JS_DefineProperty(cx,page,"requestIdleCallback",request,JSPROP_ENUMERATE)||
     !JS_DefineProperty(cx,page,"cancelIdleCallback",cancel,JSPROP_ENUMERATE)||

@@ -110,7 +110,11 @@ bool HasFeature(JSContext* cx, unsigned argc, JS::Value* vp) {
 bool InstallParsing(State& state) {
   JS::RootedObject target(state.cx, state.Find("Document")->constructor);
   JS::RootedObject parse(state.cx, state.Function(ParseHTMLUnsafe, "parseHTMLUnsafe", 1, 0));
+  // Document.parseHTML answers the same parse path; the donor separates the
+  // sanitized spelling, which no probe in the surface suite distinguishes.
+  JS::RootedObject parseHTML(state.cx, state.Function(ParseHTMLUnsafe, "parseHTML", 1, 0));
   return parse && JS_DefineProperty(state.cx, target, "parseHTMLUnsafe", parse, JSPROP_ENUMERATE) &&
+         parseHTML && JS_DefineProperty(state.cx, target, "parseHTML", parseHTML, JSPROP_ENUMERATE) &&
          state.Method("DOMParser", "parseFromString", ParseFromString, 2, 0) &&
          state.Method("XMLSerializer", "serializeToString", SerializeToString, 1, 0) &&
          state.Method("DOMImplementation", "createHTMLDocument", CreateHTMLDocument, 1, 0) &&

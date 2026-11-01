@@ -61,7 +61,7 @@ bool Realm::InstallValues() {
     if (!s.kit.Accessor(s.faces[Quad], kNames[Quad], points[i], QuadGet, nullptr, i)) return false;
   return s.kit.Method(s.faces[Quad], kNames[Quad], "toJSON", QuadJSON, 0, 0) &&
          s.kit.Method(s.faces[Quad], kNames[Quad], "getBounds", QuadBounds, 0, 0) &&
-         Static(s, Quad, "fromQuad", QuadFrom, 0) && Static(s, Quad, "fromRect", QuadFrom, 1) &&
+         Static(s, Quad, "fromRect", QuadFrom, 1) && Static(s, Quad, "fromQuad", QuadFrom, 0) &&
          InstallMatrix(s);
 }
 bool Realm::Install() {

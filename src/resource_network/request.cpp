@@ -78,7 +78,7 @@ bool InstallRequest(State& state, PageHelpers& helpers) {
   JS::RootedObject prototype(cx, JS_NewPlainObject(cx));
   JS::RootedObject constructor(
       cx, NativeFunction(state, RequestCreate, "Request", 1, JSFUN_CONSTRUCTOR));
-  if (!prototype || !constructor ||
+  if (!prototype || !constructor || !LeadFunctionKeys(cx, constructor) ||
       !JS_DefineProperty(cx, constructor, "prototype", prototype,
                          JSPROP_READONLY | JSPROP_PERMANENT) ||
       !JS_DefineProperty(cx, prototype, "constructor", constructor, 0) ||

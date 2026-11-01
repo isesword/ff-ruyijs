@@ -37,7 +37,8 @@ bool ConstructorWrapper(JSContext* cx, JS::MutableHandleValue wrapper) {
   JS::RootedObject object(cx, JS_GetFunctionObject(function));
   js::SetFunctionNativeReserved(object, 0, wrapper);
   JS::RootedObject prototype(cx, JS_NewPlainObject(cx));
-  if (!prototype || !JS_DefineProperty(cx, prototype, "constructor", object, 0) ||
+  if (!prototype || !LeadFunctionKeys(cx, object) ||
+      !JS_DefineProperty(cx, prototype, "constructor", object, 0) ||
       !JS_DefineProperty(cx, object, "prototype", prototype, JSPROP_PERMANENT))
     return false;
   wrapper.setObject(*object);

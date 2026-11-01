@@ -101,6 +101,28 @@ bool EventConstructor(JSContext* cx, unsigned argc, JS::Value* vp) {
   state->events.push_back(std::move(event));
   args.rval().setObject(*object); return trace.Finish(true);
 }
+bool InitClassOrdered(JSContext* cx, JS::HandleObject page, const JSClass* clasp,
+                      JS::HandleObject parent_prototype, const char* name,
+                      JSNative constructor, unsigned nargs,
+                      const JSPropertySpec* properties, const JSFunctionSpec* methods,
+                      JS::MutableHandleObject prototype, JS::MutableHandleObject function) {
+  prototype.set(JS_NewObjectWithGivenProto(cx, clasp, parent_prototype));
+  if (!prototype) return false;
+  JS::RootedFunction created(cx, JS_NewFunction(cx, constructor, nargs, JSFUN_CONSTRUCTOR, name));
+  if (!created) return false;
+  function.set(JS_GetFunctionObject(created));
+  // Resolve the lazy pair before the permanent prototype key: length, then name.
+  JS::RootedValue resolved(cx);
+  if (!JS_GetProperty(cx, function, "length", &resolved) ||
+      !JS_GetProperty(cx, function, "name", &resolved) ||
+      !JS_DefineProperty(cx, function, "prototype", prototype,
+                         JSPROP_READONLY | JSPROP_PERMANENT) ||
+      !JS_DefineProperty(cx, prototype, "constructor", function, 0) ||
+      !JS_DefineProperty(cx, page, name, function, 0)) return false;
+  return (!methods || JS_DefineFunctions(cx, prototype, methods)) &&
+         (!properties || JS_DefineProperties(cx, prototype, properties));
+}
+
 bool InstallEvent(State& state) {
   static const JSFunctionSpec methods[] = {
     JS_FN("preventDefault", Prevent, 0, JSPROP_ENUMERATE),
@@ -109,16 +131,15 @@ bool InstallEvent(State& state) {
     JS_FN("composedPath", Path, 0, JSPROP_ENUMERATE),
     JS_FN("initEvent", Init, 1, JSPROP_ENUMERATE), JS_FS_END
   };
-  JS::RootedObject prototype(state.cx, JS_InitClass(state.cx, state.page, &kEventClass,
-      nullptr, "Event", EventConstructor, 1, kEventProperties, methods, nullptr, nullptr));
-  if (!prototype || !Tag(state.cx, prototype, "Event")) return false;
+  JS::RootedObject prototype(state.cx), function(state.cx);
+  if (!InitClassOrdered(state.cx, state.page, &kEventClass, nullptr, "Event",
+                        EventConstructor, 1, kEventProperties, methods,
+                        &prototype, &function)) return false;
+  if (!Tag(state.cx, prototype, "Event")) return false;
   state.eventPrototype = prototype;
   JSFunction* getter = JS_NewFunction(state.cx, GetTrusted, 0, 0, "get isTrusted");
   if (!getter) return false;
   state.trustedGetter = JS_GetFunctionObject(getter);
-  JS::RootedValue constructor(state.cx);
-  if (!JS_GetProperty(state.cx, state.page, "Event", &constructor)) return false;
-  JS::RootedObject function(state.cx, &constructor.toObject());
   const char* names[] = {"NONE", "CAPTURING_PHASE", "AT_TARGET", "BUBBLING_PHASE",
                          "ALT_MASK", "CONTROL_MASK", "SHIFT_MASK", "META_MASK"};
   const int values[] = {0, 1, 2, 3, 1, 2, 4, 8};

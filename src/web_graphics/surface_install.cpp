@@ -2,7 +2,8 @@
 #include "web_graphics/public_calls.h"
 namespace ruyijs::web_graphics {
 namespace {
-struct Constant { int version; const char* name; double value; };
+// ctor_only marks a constant the donor carries on the interface object alone.
+struct Constant { int version; const char* name; double value; bool ctor_only = false; };
 const Constant kConstants[] = {
 #include "web_graphics/public_constants_0.inc"
 #include "web_graphics/public_constants_1.inc"
@@ -10,10 +11,6 @@ const Constant kConstants[] = {
 #include "web_graphics/public_constants_3.inc"
 #include "web_graphics/public_constants_4.inc"
 #include "web_graphics/public_constants_5.inc"
-};
-struct ConstructorConstant { int version; const char* name; double value; };
-const ConstructorConstant kConstructorConstants[] = {
-{2, "TIMEOUT_IGNORED", -1},
 };
 struct Method { int version; const char* name; JSNative native; unsigned length; int op; };
 const Method kMethods[] = {
@@ -27,14 +24,9 @@ bool InstallPublicSurface(State& s) {
     JS::RootedValue v(s.cx, JS::NumberValue(c.value));
     const unsigned flags = JSPROP_ENUMERATE | JSPROP_READONLY | JSPROP_PERMANENT;
     // The prototype copy is made permanent by the binding order pass, after it is placed last.
-    if (!JS_DefineProperty(s.cx, f.prototype, c.name, v, flags & ~JSPROP_PERMANENT) ||
+    if ((!c.ctor_only &&
+         !JS_DefineProperty(s.cx, f.prototype, c.name, v, flags & ~JSPROP_PERMANENT)) ||
         !JS_DefineProperty(s.cx, f.constructor, c.name, v, flags)) return false;
-  }
-  for (const auto& c : kConstructorConstants) {
-    WebFace& f = c.version == 1 ? s.context : s.context2;
-    JS::RootedValue v(s.cx, JS::NumberValue(c.value));
-    const unsigned flags = JSPROP_ENUMERATE | JSPROP_READONLY | JSPROP_PERMANENT;
-    if (!JS_DefineProperty(s.cx, f.constructor, c.name, v, flags)) return false;
   }
   for (const auto& m : kMethods) {
     WebFace& f = m.version == 1 ? s.context : s.context2;

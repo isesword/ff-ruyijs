@@ -124,12 +124,15 @@ bool NewWalker(State& state, bool iterator, JS::HandleValue root,
 }
 
 bool Constant(State& state, const char* name, double value) {
-  Interface* iface = state.Find("NodeFilter");
-  if (!iface) return false;
+  // NodeFilter has no prototype in the donor; the constants are its own keys.
+  JS::RootedValue constructor(state.cx);
+  if (!JS_GetProperty(state.cx, state.page, "NodeFilter", &constructor) ||
+      !constructor.isObject())
+    return false;
   const unsigned attrs = JSPROP_ENUMERATE | JSPROP_READONLY | JSPROP_PERMANENT;
   JS::RootedValue number(state.cx, JS::NumberValue(value));
-  return JS_DefineProperty(state.cx, iface->prototype, name, number, attrs) &&
-         JS_DefineProperty(state.cx, iface->constructor, name, number, attrs);
+  JS::RootedObject target(state.cx, &constructor.toObject());
+  return JS_DefineProperty(state.cx, target, name, number, attrs);
 }
 }  // namespace
 

@@ -32,13 +32,14 @@ bool PerfInstallEntries(State& s,JS::HandleObject page,JS::HandleObject owner,Pa
   for(unsigned field=0;field<schema.count;++field)
    if(!PerfProperty(cx,helpers,owner,proto,schema.name,schema.fields[field],
        kind>=LegacyTiming?PerfLegacyMember:PerfEntryMember,kind*100+field))return false;
+  if(!PerfFinishInterface(cx,helpers,schema.name,page,proto,ctor)||!JS_SetElement(cx,prototypes,kind,proto))return false;
   if(kind==LegacyNavigation){
+   // The static constants follow the permanent prototype key in the donor.
    const char* const names[]={"TYPE_NAVIGATE","TYPE_RELOAD","TYPE_BACK_FORWARD","TYPE_RESERVED"};
    for(unsigned i=0;i<4;++i)
     if(!JS_DefineProperty(cx,proto,names[i],i==3?255:i,JSPROP_ENUMERATE|JSPROP_READONLY|JSPROP_PERMANENT)||
        !JS_DefineProperty(cx,ctor,names[i],i==3?255:i,JSPROP_ENUMERATE|JSPROP_READONLY|JSPROP_PERMANENT))return false;
   }
-  if(!PerfFinishInterface(cx,helpers,schema.name,page,proto,ctor)||!JS_SetElement(cx,prototypes,kind,proto))return false;
   if(kind>=LegacyTiming){
    JS::RootedObject object(cx,JS_NewObjectWithGivenProto(cx,kind==LegacyTiming?&kLegacyTimingClass:&kLegacyNavigationClass,proto));
    if(!object)return false;

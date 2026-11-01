@@ -5,6 +5,7 @@
 #include "document_model/xpath.h"
 #include "interaction/realm.h"
 #include "runtime/native_constructor_trace.h"
+#include "runtime/page_helpers.h"
 #include "js/PropertyAndElement.h"
 #include "js/Realm.h"
 namespace ruyijs::document_model {
@@ -52,6 +53,21 @@ bool InstallInterfaces(State& state) {
     parent = state.Find(spec.parent)->prototype;
     if (!state.DefineInterface(spec.name, parent, spec.kind)) return false;
   }
+  // HTMLMediaElement's ready/network state constants live on the interface
+  // object (HTMLMediaElement.Binding's sConstants order).
+  {
+    static const struct { const char* name; int32_t value; } media[] = {
+      {"NETWORK_EMPTY", 0}, {"NETWORK_IDLE", 1}, {"NETWORK_LOADING", 2},
+      {"NETWORK_NO_SOURCE", 3}, {"HAVE_NOTHING", 0}, {"HAVE_METADATA", 1},
+      {"HAVE_CURRENT_DATA", 2}, {"HAVE_FUTURE_DATA", 3}, {"HAVE_ENOUGH_DATA", 4}};
+    JS::RootedObject mediaConstructor(state.cx, state.Find("HTMLMediaElement")->constructor);
+    const unsigned flags = JSPROP_ENUMERATE | JSPROP_READONLY | JSPROP_PERMANENT;
+    for (const auto& entry : media) {
+      JS::RootedValue number(state.cx, JS::Int32Value(entry.value));
+      if (!JS_DefineProperty(state.cx, mediaConstructor, entry.name, number, flags))
+        return false;
+    }
+  }
   if (!InstallForeignElementInterfaces(state)) return false;
   parent = state.Find("DocumentFragment")->prototype;
   if (!state.DefineInterface("ShadowRoot", parent, Illegal, false)) return false;
@@ -93,9 +109,16 @@ bool InstallInterfaces(State& state) {
   parent = state.Find("NodeList")->prototype;
   if (!state.DefineInterface("RadioNodeList", parent, Illegal)) return false;
   // Traversal interfaces chain to Object.prototype like the collections.
-  static const char* traversal[] = {"NodeFilter", "TreeWalker", "NodeIterator"};
+  static const char* traversal[] = {"TreeWalker", "NodeIterator"};
   for (const char* name : traversal)
     if (!state.DefineInterface(name, plain, Illegal)) return false;
+  // NodeFilter has no interface prototype object in the donor: a plain
+  // function without [[Construct]] or a prototype key carries the constants.
+  JS::RootedObject filterCtor(state.cx,
+      state.Function(Constructor, "NodeFilter", 0, Illegal, JSFUN_CONSTRUCTOR));
+  if (!filterCtor || !LeadFunctionKeys(state.cx, filterCtor) ||
+      !JS_DefineProperty(state.cx, state.page, "NodeFilter", filterCtor, 0) ||
+      !state.helpers.Constructor("NodeFilter", filterCtor)) return false;
   if (!state.DefineInterface("AbstractRange", plain, Illegal)) return false;
   parent = state.Find("AbstractRange")->prototype;
   if (!state.DefineInterface("Range", parent, NewRangeObject) ||

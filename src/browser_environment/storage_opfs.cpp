@@ -122,6 +122,7 @@ bool OpfsInterface(State& s, const char* name, JS::HandleObject parentProto, JS:
   JS::RootedString tag(cx, JS_NewStringCopyZ(cx, name));
   JS::RootedId tagId(cx, JS::PropertyKey::Symbol(JS::GetWellKnownSymbol(cx, JS::SymbolCode::toStringTag)));
   return prototype && ctor && tag && (!parentCtor || JS_SetPrototype(cx, ctor, parentCtor)) &&
+         LeadFunctionKeys(cx, ctor) &&
          JS_DefineProperty(cx, ctor, "prototype", prototype, JSPROP_READONLY | JSPROP_PERMANENT) &&
          JS_DefineProperty(cx, prototype, "constructor", ctor, 0) &&
          JS_DefinePropertyById(cx, prototype, tagId, tag, JSPROP_READONLY) &&

@@ -227,7 +227,8 @@ bool Interface(State& state, const JSClass* klass, JS::MutableHandleObject resul
   JS::RootedString tag(cx, JS_NewStringCopyZ(cx, klass->name));
   JS::RootedId tagId(cx, JS::PropertyKey::Symbol(
       JS::GetWellKnownSymbol(cx, JS::SymbolCode::toStringTag)));
-  if (!tag || !JS_DefineProperty(cx, constructor, "prototype", prototype,
+  if (!tag || !LeadFunctionKeys(cx, constructor) ||
+      !JS_DefineProperty(cx, constructor, "prototype", prototype,
                                  JSPROP_READONLY | JSPROP_PERMANENT)) return false;
   // Firefox's own-key order: operations and attributes, constructor,
   // @@iterator, @@toStringTag.

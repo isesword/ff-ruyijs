@@ -166,6 +166,17 @@ bool StatusGet(JSContext* cx, unsigned argc, JS::Value* vp) {
   return true;
 }
 
+// The load-status event handlers exist for surface parity; no font-load event
+// fires in this engine, so the getter answers null and the setter ignores.
+bool HandlerGet(JSContext* cx, unsigned argc, JS::Value* vp) {
+  JS::CallArgsFromVp(argc, vp).rval().setNull();
+  return true;
+}
+bool HandlerSet(JSContext* cx, unsigned argc, JS::Value* vp) {
+  JS::CallArgsFromVp(argc, vp).rval().setUndefined();
+  return true;
+}
+
 bool ReadyGet(JSContext* cx, unsigned argc, JS::Value* vp) {
   auto args = JS::CallArgsFromVp(argc, vp);
   JS::RootedObject self(cx);
@@ -212,6 +223,7 @@ bool InstallFontFaceSet(JSContext* cx, JS::HandleObject page, JS::HandleObject d
   JS::RootedObject fonts(cx, Function(cx, FontsGet, "get fonts", 0));
   if (!set_prototype || !set_constructor || !add || !remove || !has || !clear || !load || !check ||
       !size || !status || !ready || !fonts ||
+      !LeadFunctionKeys(cx, set_constructor) ||
       !JS_DefineProperty(cx, set_constructor, "prototype", set_prototype,
                          JSPROP_READONLY | JSPROP_PERMANENT) ||
       !JS_DefineProperty(cx, set_prototype, "constructor", set_constructor, 0) ||
@@ -226,6 +238,13 @@ bool InstallFontFaceSet(JSContext* cx, JS::HandleObject page, JS::HandleObject d
       !JS_DefineProperty(cx, set_prototype, "status", status, nullptr, JSPROP_ENUMERATE) ||
       !JS_DefineProperty(cx, set_prototype, "ready", ready, nullptr, JSPROP_ENUMERATE) ||
       !InstallFontFaceSetIterators(cx, set_prototype, helpers)) return false;
+  static const char* const handlers[] = {"onloading", "onloadingdone", "onloadingerror"};
+  for (const char* handler : handlers) {
+    JS::RootedObject get(cx, Function(cx, HandlerGet, "get onloading", 0));
+    JS::RootedObject set(cx, Function(cx, HandlerSet, "set onloading", 1));
+    if (!get || !set ||
+        !JS_DefineProperty(cx, set_prototype, handler, get, set, JSPROP_ENUMERATE)) return false;
+  }
   js::SetFunctionNativeReserved(add, 0, JS::PrivateValue(&events));
   JS::RootedObject faces(cx, JS::NewArrayObject(cx, 0));
   JS::RootedObject set(cx, JS_NewObjectWithGivenProto(cx, &kFontFaceSetClass, set_prototype));

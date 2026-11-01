@@ -83,19 +83,27 @@ bool Method(JSContext* cx, unsigned argc, JS::Value* vp) {
   args.rval().setUndefined(); return true;
 }
 }
+bool TrackGet(JSContext* cx, unsigned argc, JS::Value* vp) {
+  JS::CallArgsFromVp(argc, vp).rval().setNull();
+  return true;
+}
 bool InstallEmbeddedElements(State& state) {
   for (size_t i = 0; i < std::size(embedded::kMembers); ++i) {
     const auto& m = embedded::kMembers[i];
     if (!state.Accessor(m.iface, m.name, Read, int32_t(i), m.set ? Write : nullptr)) return false;
   }
+  // The TextTrack accessor precedes the readyState constants in the donor; the
+  // prototype copies stay configurable for the binding order pass, which makes
+  // them permanent after the ordering (SealConstants).
+  if (!state.Accessor("HTMLTrackElement", "track", TrackGet, 0, nullptr)) return false;
   const char* names[] = {"NONE", "LOADING", "LOADED", "ERROR"};
   for (int32_t i = 0; i < 4; ++i) {
     auto* iface = state.Find("HTMLTrackElement");
-    for (bool constructor : {false, true}) {
-      JS::RootedObject target(state.cx, constructor ? iface->constructor.get() : iface->prototype.get());
-      if (!JS_DefineProperty(state.cx, target, names[i], i,
-          JSPROP_ENUMERATE | JSPROP_READONLY | JSPROP_PERMANENT)) return false;
-    }
+    JS::RootedValue number(state.cx, JS::Int32Value(i));
+    if (!JS_DefineProperty(state.cx, iface->constructor, names[i], number,
+                           JSPROP_ENUMERATE | JSPROP_READONLY | JSPROP_PERMANENT) ||
+        !JS_DefineProperty(state.cx, iface->prototype, names[i], number,
+                           JSPROP_ENUMERATE | JSPROP_READONLY)) return false;
   }
   return state.Method("HTMLEmbedElement", "getSVGDocument", Method, 0, 0) &&
       state.Method("HTMLMarqueeElement", "start", Method, 0, 1) &&

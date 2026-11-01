@@ -320,5 +320,8 @@ const char* MemberName(Kind kind, uint32_t index);
 bool Getter(JSContext* cx, unsigned argc, JS::Value* vp);
 bool LocationString(JSContext* cx, unsigned argc, JS::Value* vp);
 bool ParseBaseline(JSContext* cx, JS::MutableHandleValue result);
+// Presence stubs for Serial/SerialPort/ViewTimeline/ScrollTimeline
+// (window_extras.cpp): donor member names and order, no implementation.
+bool InstallWindowExtras(State& state);
 }
 #endif

@@ -17,13 +17,15 @@ bool InstallAbortSignal(State& s,PageHelpers& helpers,interaction::Realm& events
   JS::RootedObject get(cx,NativeSlot(s,AbortMember,label.c_str(),0,i==2?3:i)),set(cx);
   if(i==2)set=NativeSlot(s,AbortMember,"set onabort",1,4);
   if(!get||(i==2&&!set)||!JS_DefineProperty(cx,proto,names[i],get,set,JSPROP_ENUMERATE)||!helpers.Accessor("AbortSignal",proto,names[i]))return false;}
+ JS::RootedValue baseCtor(cx);if(!JS_GetProperty(cx,base,"constructor",&baseCtor))return false;
+ JS::RootedObject ctorBase(cx,&baseCtor.toObject());
+ // The permanent prototype key goes down before the static methods: the donor's
+ // interface object answers length, name, prototype, then the statics.
+ if(!JS_SetPrototype(cx,ctor,ctorBase)||!LeadFunctionKeys(cx,ctor)||!JS_DefineProperty(cx,ctor,"prototype",proto,JSPROP_READONLY|JSPROP_PERMANENT)||
+    !JS_DefineProperty(cx,proto,"constructor",ctor,0)||!Tag(cx,proto,"AbortSignal")||!helpers.Constructor("AbortSignal",ctor))return false;
  const char* statics[]={"abort","timeout","any"};
  for(int i=0;i<3;++i){JS::RootedObject fn(cx,NativeSlot(s,AbortStaticMethod,statics[i],i?1:0,i));
   if(!fn||!JS_DefineProperty(cx,ctor,statics[i],fn,JSPROP_ENUMERATE)||!helpers.Member(fn,"AbortSignal",statics[i],"call"))return false;}
- JS::RootedValue baseCtor(cx);if(!JS_GetProperty(cx,base,"constructor",&baseCtor))return false;
- JS::RootedObject ctorBase(cx,&baseCtor.toObject());
- if(!JS_SetPrototype(cx,ctor,ctorBase)||!JS_DefineProperty(cx,ctor,"prototype",proto,JSPROP_READONLY|JSPROP_PERMANENT)||
-    !JS_DefineProperty(cx,proto,"constructor",ctor,0)||!Tag(cx,proto,"AbortSignal")||!helpers.Constructor("AbortSignal",ctor))return false;
  s.signalPrototype=proto;result.set(ctor);return true;
 }
 }

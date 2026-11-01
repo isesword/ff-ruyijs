@@ -1,5 +1,6 @@
 #include "document_model/exception_internal.h"
 #include "document_model/exception_names.h"
+#include "runtime/page_helpers.h"
 #include "jsapi.h"
 #include "jsfriendapi.h"
 #include "js/PropertyAndElement.h"
@@ -18,6 +19,7 @@ bool InstallExceptionSurface(JSContext* cx, JS::HandleObject global,
                                                             JSFUN_CONSTRUCTOR, "DOMException"));
   if (!prototype || !function || !JS_SetPrototype(cx, prototype, error)) return false;
   constructor.set(JS_GetFunctionObject(function));
+  if (!LeadFunctionKeys(cx, constructor)) return false;
   js::SetFunctionNativeReserved(constructor, 0, JS::ObjectValue(*prototype));
   JS::RootedString tag(cx, JS_NewStringCopyZ(cx, "DOMException"));
   JS::RootedId id(cx, JS::PropertyKey::Symbol(JS::GetWellKnownSymbol(cx, JS::SymbolCode::toStringTag)));

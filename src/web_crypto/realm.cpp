@@ -47,6 +47,7 @@ bool Install(JSContext* cx, JS::HandleObject page, PageHelpers& helpers,
   JS::RootedObject values(cx, Function(cx, RandomMember, "getRandomValues", 1, RandomOperation::Values, exception));
   JS::RootedObject uuid(cx, Function(cx, RandomMember, "randomUUID", 0, RandomOperation::Uuid, exception));
   if (!prototype || !constructor || !values || !uuid ||
+      !LeadFunctionKeys(cx, constructor) ||
       !JS_DefineProperty(cx, constructor, "prototype", prototype, JSPROP_READONLY | JSPROP_PERMANENT) ||
       !Tag(cx, prototype) ||
       !JS_DefineProperty(cx, prototype, "getRandomValues", values, JSPROP_ENUMERATE) ||

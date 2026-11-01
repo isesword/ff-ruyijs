@@ -1,9 +1,20 @@
 #ifndef RUYIJS_PAGE_HELPERS_H
 #define RUYIJS_PAGE_HELPERS_H
+#include "js/PropertyAndElement.h"
 #include "js/RootingAPI.h"
 #include "js/ValueArray.h"
 
 namespace ruyijs {
+// A native constructor's length/name keys are lazy: they resolve to the END of
+// the shape when first read. The donor's generated bindings answer length and
+// name before the permanent prototype key, so force the pair right after the
+// function is created and before anything defines own keys on it.
+inline bool LeadFunctionKeys(JSContext* cx, JS::HandleObject function) {
+  JS::RootedValue resolved(cx);
+  return JS_GetProperty(cx, function, "length", &resolved) &&
+         JS_GetProperty(cx, function, "name", &resolved);
+}
+
 class PageHelpers final {
  public:
   PageHelpers(JSContext* cx, JS::HandleObject page);

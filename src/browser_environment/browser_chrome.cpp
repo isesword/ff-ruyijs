@@ -25,7 +25,7 @@ bool Interface(State& s, const JSClass& shape, JS::HandleObject prototype) {
   JS::RootedObject constructor(cx, s.Function(Illegal, shape.name, 0, 0, JSFUN_CONSTRUCTOR));
   JS::RootedString tag(cx, JS_NewStringCopyZ(cx, shape.name));
   JS::RootedId key(cx, JS::PropertyKey::Symbol(JS::GetWellKnownSymbol(cx, JS::SymbolCode::toStringTag)));
-  return constructor && tag &&
+  return constructor && tag && LeadFunctionKeys(cx, constructor) &&
       JS_DefineProperty(cx, constructor, "prototype", prototype, JSPROP_READONLY | JSPROP_PERMANENT) &&
       JS_DefineProperty(cx, prototype, "constructor", constructor, 0) &&
       JS_DefinePropertyById(cx, prototype, key, tag, JSPROP_READONLY) &&

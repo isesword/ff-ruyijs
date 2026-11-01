@@ -20,7 +20,7 @@ bool InstallKeyEvent(State& state) {
   JSContext* cx = state.cx;
   JS::RootedFunction function(cx, JS_NewFunction(cx, IllegalKeyEvent, 0, JSFUN_CONSTRUCTOR, "KeyEvent"));
   JS::RootedObject object(cx, function ? JS_GetFunctionObject(function) : nullptr);
-  if (!object) return false;
+  if (!object || !LeadFunctionKeys(cx, object)) return false;
   const unsigned flags = JSPROP_ENUMERATE | JSPROP_READONLY | JSPROP_PERMANENT;
   for (const EventConstant* entry = kKeyboardConstants + 4; entry->name; ++entry) {
     if (!JS_DefineProperty(cx, object, entry->name, entry->value, flags)) return false;

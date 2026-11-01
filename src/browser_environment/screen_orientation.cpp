@@ -139,6 +139,7 @@ bool InstallScreenOrientation(State& state, interaction::Realm& events) {
   JS::RootedId tagId(cx, JS::PropertyKey::Symbol(
       JS::GetWellKnownSymbol(cx, JS::SymbolCode::toStringTag)));
   if (!eventPrototype || !prototype || !constructor || !instance || !tag ||
+      !LeadFunctionKeys(cx, constructor) ||
       !JS_DefineProperty(cx, constructor, "prototype", prototype,
                          JSPROP_READONLY | JSPROP_PERMANENT) ||
       !JS_DefineProperty(cx, prototype, "constructor", constructor, 0) ||

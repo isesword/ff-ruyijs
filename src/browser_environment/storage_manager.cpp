@@ -109,7 +109,8 @@ bool InstallStorageManager(State& state) {
   JS::RootedString tag(cx, JS_NewStringCopyZ(cx, "StorageManager"));
   JS::RootedId tagId(cx, JS::PropertyKey::Symbol(
       JS::GetWellKnownSymbol(cx, JS::SymbolCode::toStringTag)));
-  if (!tag || !JS_DefineProperty(cx, constructor, "prototype", prototype,
+  if (!tag || !LeadFunctionKeys(cx, constructor) ||
+      !JS_DefineProperty(cx, constructor, "prototype", prototype,
                                  JSPROP_READONLY | JSPROP_PERMANENT) ||
       !JS_DefineProperty(cx, prototype, "constructor", constructor, 0) ||
       !JS_DefinePropertyById(cx, prototype, tagId, tag, JSPROP_READONLY))

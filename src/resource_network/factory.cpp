@@ -104,7 +104,7 @@ bool InstallHeaders(State& s, PageHelpers& helpers) {
   JS::SetReservedSlot(s.holder, 1, JS::ObjectValue(*prototype));
   JS::SetReservedSlot(s.holder, 2, JS::ObjectValue(*iterator));
   JS::RootedObject constructor(cx, Function(s, Constructor, "Headers", 0, Operation::Append, JSFUN_CONSTRUCTOR));
-  if (!constructor || !JS_DefineProperty(cx, constructor, "prototype", prototype, JSPROP_READONLY | JSPROP_PERMANENT) ||
+  if (!constructor || !LeadFunctionKeys(cx, constructor) || !JS_DefineProperty(cx, constructor, "prototype", prototype, JSPROP_READONLY | JSPROP_PERMANENT) ||
       !JS_DefineProperty(cx, prototype, "constructor", constructor, 0) ||
       !Tag(cx, prototype, "Headers") || !Tag(cx, iterator, "Headers Iterator")) return false;
   struct Definition { const char* name; unsigned length; JSNative native; Operation op; };

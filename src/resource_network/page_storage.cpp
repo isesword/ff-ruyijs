@@ -164,7 +164,7 @@ static bool InstallStorageInterface(State& s, PageHelpers& helpers) {
   JS::RootedObject prototype(cx, JS_NewPlainObject(cx));
   JS::RootedObject constructor(cx, Native(s, StorageConstructor, "Storage", 0,
                                           StorageOp::Length, JSFUN_CONSTRUCTOR));
-  if (!prototype || !constructor ||
+  if (!prototype || !constructor || !LeadFunctionKeys(cx, constructor) ||
       !JS_DefineProperty(cx, constructor, "prototype", prototype,
                          JSPROP_READONLY | JSPROP_PERMANENT) ||
       !JS_DefineProperty(cx, prototype, "constructor", constructor, 0) ||

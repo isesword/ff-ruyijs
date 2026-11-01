@@ -191,7 +191,8 @@ bool InstallStringList(State& state) {
   if (!state.Accessor(prototype, "length", kStringListLength, JSPROP_ENUMERATE,
                       StringListGetter) ||
       !state.helpers->Accessor("DOMStringList", prototype, "length")) return false;
-  if (!JS_DefineProperty(cx, constructor, "prototype", prototype,
+  if (!LeadFunctionKeys(cx, constructor) ||
+      !JS_DefineProperty(cx, constructor, "prototype", prototype,
                          JSPROP_READONLY | JSPROP_PERMANENT) ||
       !JS_DefineProperty(cx, prototype, "constructor", constructor, 0)) return false;
   // WebIDL: an interface with an indexed getter and an integer length gets

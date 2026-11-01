@@ -73,7 +73,7 @@ bool InstallAbort(State& state, PageHelpers& helpers, interaction::Realm& events
   JS::RootedObject signal(cx, NativeFunction(state, SignalGet, "get signal", 0));
   JS::RootedObject abort(cx, NativeFunction(state, AbortCall, "abort", 0));
   JS::RootedObject setter(cx);
-  if (!prototype || !constructor || !signal || !abort ||
+  if (!prototype || !constructor || !signal || !abort || !LeadFunctionKeys(cx, constructor) ||
       !JS_DefineProperty(cx, constructor, "prototype", prototype,
                          JSPROP_READONLY | JSPROP_PERMANENT) ||
       !JS_DefineProperty(cx, prototype, "abort", abort, JSPROP_ENUMERATE) ||

@@ -327,7 +327,8 @@ bool Environment::Install(interaction::Realm& events, PageHelpers& helpers) {
       !state.NavigatorLegacyMembers() ||
       !InstallStorageManager(state) ||
       !InstallBrowserChrome(state) || !InstallWindowHandlers(state, events) ||
-      !InstallNavigation(state, events) || !InstallWindowLegacy(state, events)) return false;
+      !InstallNavigation(state, events) || !InstallWindowLegacy(state, events) ||
+      !InstallWindowExtras(state)) return false;
   state.installed = true;
   return true;
 }

@@ -45,17 +45,18 @@ bool InstallScheduler(State& s,JS::HandleObject page,PageHelpers& helpers,intera
  if(!arrayProto||!Save(cx,f,TArrayValues,arrayProto,"values"))return false;
  for(int kind=0;kind<3;++kind){const char* name=kind==0?"Scheduler":kind==1?"TaskController":"TaskSignal";
   JS::RootedObject proto(cx,JS_NewPlainObject(cx));JS::RootedObject ctor(cx,TaskFunction(cx,f,kind==1?TaskControllerConstruct:PerfIllegalConstructor,name,0,0,JSFUN_CONSTRUCTOR));
-  if(!proto||!ctor)return false;
+  if(!proto||!ctor||!LeadFunctionKeys(cx,ctor))return false;
   if(kind==1){if(!JS_SetPrototype(cx,proto,cp)||!JS_SetPrototype(cx,ctor,abortCtor))return false;JS::SetReservedSlot(f,TControllerProto,JS::ObjectValue(*proto));}
   if(kind==2){if(!JS_SetPrototype(cx,proto,sp)||!JS_SetPrototype(cx,ctor,abortSignal))return false;JS::SetReservedSlot(f,TSignalProto,JS::ObjectValue(*proto));}
   if(kind<2){const char* methods[]={kind?"setPriority":"postTask","yield"};
    for(int i=0;i<(kind?1:2);++i){JS::RootedObject fn(cx,TaskFunction(cx,f,kind?TaskSetPriority:SchedulerMethod,methods[i],i?0:1,i));
     if(!fn||!JS_DefineProperty(cx,proto,methods[i],fn,JSPROP_ENUMERATE)||!helpers.Member(fn,name,methods[i],"call"))return false;}}
-  else {JS::RootedObject any(cx,TaskFunction(cx,f,TaskSignalAny,"any",1,0));
+  if(!PerfFinishInterface(cx,helpers,name,page,proto,ctor))return false;
+  if(kind==2){JS::RootedObject any(cx,TaskFunction(cx,f,TaskSignalAny,"any",1,0));
+   // The static "any" follows the permanent prototype key in the donor.
    if(!any||!JS_DefineProperty(cx,ctor,"any",any,JSPROP_ENUMERATE)||!helpers.Member(any,name,"any","call")||
     !PerfProperty(cx,helpers,f,proto,name,"priority",TaskSignalMember,0)||
     !PerfProperty(cx,helpers,f,proto,name,"onprioritychange",TaskSignalMember,1,true))return false;}
-  if(!PerfFinishInterface(cx,helpers,name,page,proto,ctor))return false;
   if(!kind){JS::RootedObject object(cx,JS_NewObjectWithGivenProto(cx,&kSchedulerClass,proto));if(!object)return false;
    JS::SetReservedSlot(object,SFactory,JS::ObjectValue(*f));JS::SetReservedSlot(f,TScheduler,JS::ObjectValue(*object));}
  }

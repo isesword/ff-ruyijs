@@ -40,12 +40,10 @@ bool Define(State& state, const char* name, const JSClass* clasp, JSNative const
              JS::MutableHandleObject out) {
   JSContext* cx = state.cx;
   JS::RootedObject parent(cx, JS::GetRealmObjectPrototype(cx));
-  out.set(JS_InitClass(cx, state.page, clasp, parent, name, constructor, 0,
-                      properties, methods, nullptr, nullptr));
-  if (!out || !Tag(cx, out, name)) return false;
-  JS::RootedValue ctor(cx);
-  if (!JS_GetProperty(cx, state.page, name, &ctor) || !ctor.isObject()) return false;
-  JS::RootedObject ctorObject(cx, &ctor.toObject());
+  JS::RootedObject ctorObject(cx);
+  if (!InitClassOrdered(cx, state.page, clasp, parent, name, constructor, 0,
+                        properties, methods, out, &ctorObject)) return false;
+  if (!Tag(cx, out, name)) return false;
   if (!state.helpers->Interface(name, out) || !state.helpers->Constructor(name, ctorObject))
     return false;
   for (auto p = properties; p->name.string(); ++p)

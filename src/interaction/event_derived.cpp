@@ -574,11 +574,12 @@ bool InstallDerivedEvents(State& state, bool touch_enabled, Exposure exposure) {
         !prototype_value.isObject())
       return Error(cx, "TypeError", "Event parent prototype is not installed");
     JS::RootedObject parent_prototype(cx, &prototype_value.toObject());
-    JS::RootedObject prototype(cx, JS_InitClass(cx, state.page, &kEventClass,
-        parent_prototype, entry.name, entry.constructor, PublicEventArity(entry.iface),
+    JS::RootedObject prototype(cx), constructor(cx);
+    if (!InitClassOrdered(cx, state.page, &kEventClass, parent_prototype, entry.name,
+        entry.constructor, PublicEventArity(entry.iface),
         entry.iface == Iface::Keyboard || entry.iface == Iface::Touch || IsFirefoxPayloadEvent(entry.iface) ? nullptr : entry.properties,
-        entry.iface == Iface::Keyboard || entry.iface == Iface::Touch || IsFirefoxPayloadEvent(entry.iface) ? nullptr : entry.methods, nullptr, nullptr));
-    if (!prototype) return false;
+        entry.iface == Iface::Keyboard || entry.iface == Iface::Touch || IsFirefoxPayloadEvent(entry.iface) ? nullptr : entry.methods,
+        &prototype, &constructor)) return false;
     if ((entry.iface == Iface::Keyboard || entry.iface == Iface::Touch || IsFirefoxPayloadEvent(entry.iface)) &&
         ((entry.methods && !JS_DefineFunctions(cx, prototype, entry.methods)) ||
          (entry.properties && !JS_DefineProperties(cx, prototype, entry.properties)))) return false;
@@ -586,10 +587,7 @@ bool InstallDerivedEvents(State& state, bool touch_enabled, Exposure exposure) {
         !SaveLegacyPrototype(state, entry.iface, prototype)) return false;
     if (entry.iface == Iface::Mouse) state.mousePrototype = prototype;
     if (entry.iface == Iface::Pointer) state.pointerPrototype = prototype;
-    JS::RootedValue constructor_value(cx);
-    if (!JS_GetProperty(cx, state.page, entry.name, &constructor_value) ||
-        !constructor_value.isObject()) return false;
-    JS::RootedObject constructor(cx, &constructor_value.toObject());
+    JS::RootedValue constructor_value(cx, JS::ObjectValue(*constructor));
     // Keep the observed constructor-last string-key order within this installer.
     if ((entry.iface == Iface::Touch || entry.iface == Iface::NavigationEntryChange || entry.iface == Iface::Speech ||
          entry.iface == Iface::SpeechError || IsPeripheralEvent(entry.iface) || entry.iface == Iface::Navigate ||

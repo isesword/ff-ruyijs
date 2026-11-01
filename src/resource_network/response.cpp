@@ -120,8 +120,8 @@ bool RedirectCall(JSContext* cx, unsigned argc, JS::Value* vp) {
 bool InstallStatics(State& state, PageHelpers& helpers, JS::HandleObject constructor) {
   JSContext* cx = state.cx;
   struct Static { const char* name; JSNative native; unsigned length; };
-  const Static statics[] = {{"json", JsonCall, 1}, {"error", ErrorCall, 0},
-                            {"redirect", RedirectCall, 1}};
+  const Static statics[] = {{"error", ErrorCall, 0}, {"redirect", RedirectCall, 1},
+                            {"json", JsonCall, 1}};
   for (const Static& entry : statics) {
     JS::RootedObject function(cx, NativeFunction(state, entry.native, entry.name, entry.length));
     if (!function || !JS_DefineProperty(cx, constructor, entry.name, function, JSPROP_ENUMERATE) ||
@@ -137,7 +137,7 @@ bool InstallResponse(State& state, PageHelpers& helpers) {
   JS::RootedObject constructor(cx,
                                   NativeFunction(state, ResponseCreate, "Response", 0,
                                                   JSFUN_CONSTRUCTOR));
-  if (!prototype || !constructor ||
+  if (!prototype || !constructor || !LeadFunctionKeys(cx, constructor) ||
       !JS_DefineProperty(cx, constructor, "prototype", prototype,
                          JSPROP_READONLY | JSPROP_PERMANENT) ||
       !JS_DefineProperty(cx, prototype, "constructor", constructor, 0) ||

@@ -143,6 +143,10 @@ bool InstallImageElement(State& state) {
   for (int i = 0; i < int(std::size(kNames)); ++i)
     if (!state.Accessor("HTMLImageElement", kNames[i], Get, i, i <= Src ? Set : nullptr)) return false;
   JS::RootedObject factory(state.cx, state.Function(Image, "Image", 0, 0, JSFUN_CONSTRUCTOR));
+  // Resolve the lazy length/name keys before the permanent prototype key.
+  JS::RootedValue resolved(state.cx);
+  if (!JS_GetProperty(state.cx, factory, "length", &resolved) ||
+      !JS_GetProperty(state.cx, factory, "name", &resolved)) return false;
   JS::RootedObject prototype(state.cx, state.Find("HTMLImageElement")->prototype);
   return factory && JS_DefineProperty(state.cx, factory, "prototype", prototype,
                                      JSPROP_READONLY | JSPROP_PERMANENT) &&

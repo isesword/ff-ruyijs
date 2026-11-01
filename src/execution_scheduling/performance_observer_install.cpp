@@ -24,8 +24,9 @@ bool PerfInstallObservers(JSContext* cx,JS::HandleObject page,JS::HandleObject o
    JS::RootedObject fn(cx,PerfFunction(cx,owner,list?PerfListMethod:PerfObserverMethod,name,list&&op?1:0,op));
    if(!fn||!JS_DefineProperty(cx,prototype,name,fn,JSPROP_ENUMERATE)||!helpers.Member(fn,iface,name,"call"))return false;
   }
-  if(!list&&!PerfProperty(cx,helpers,owner,ctor,iface,"supportedEntryTypes",PerfObserverSupported,0))return false;
   if(!PerfFinishInterface(cx,helpers,iface,page,prototype,ctor))return false;
+  // The static supportedEntryTypes follows the permanent prototype key.
+  if(!list&&!PerfProperty(cx,helpers,owner,ctor,iface,"supportedEntryTypes",PerfObserverSupported,0))return false;
   JS::SetReservedSlot(owner,list?PListPrototype:PObserverPrototype,JS::ObjectValue(*prototype));
  }
  return true;

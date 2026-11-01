@@ -22,6 +22,10 @@ bool InstallSelectElements(State& state) {
   if (!InstallSelectAttributes(state) || !InstallSelectMethods(state) ||
       !InstallOptionsCollection(state) || !InstallControlValidity(state)) return false;
   JS::RootedObject factory(state.cx, state.Function(Option, "Option", 4, 0, JSFUN_CONSTRUCTOR));
+  // Resolve the lazy length/name keys before the permanent prototype key.
+  JS::RootedValue resolved(state.cx);
+  if (!JS_GetProperty(state.cx, factory, "length", &resolved) ||
+      !JS_GetProperty(state.cx, factory, "name", &resolved)) return false;
   JS::RootedObject prototype(state.cx, state.Find("HTMLOptionElement")->prototype);
   return factory && JS_DefineProperty(state.cx, factory, "prototype", prototype,
       JSPROP_READONLY | JSPROP_PERMANENT) &&

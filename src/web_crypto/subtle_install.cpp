@@ -39,6 +39,7 @@ bool Finish(JSContext* cx, PageHelpers& helpers, const char* name,
   if (!constructor || !tag) return false;
   JS::SetReservedSlot(crypto, slot, JS::ObjectValue(*constructor));
   return
+      LeadFunctionKeys(cx, constructor) &&
       JS_DefineProperty(cx, constructor, "prototype", prototype, JSPROP_READONLY | JSPROP_PERMANENT) &&
       JS_DefineProperty(cx, prototype, "constructor", constructor, 0) &&
       JS_DefinePropertyById(cx, prototype, key, tag, JSPROP_READONLY) &&

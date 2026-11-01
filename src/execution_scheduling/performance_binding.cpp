@@ -44,7 +44,7 @@ bool PerfFinishInterface(JSContext* cx,PageHelpers& helpers,const char* name,
  JS::HandleObject page,JS::HandleObject prototype,JS::HandleObject ctor) {
  JS::RootedString tag(cx,JS_NewStringCopyZ(cx,name));
  JS::RootedId id(cx,JS::PropertyKey::Symbol(JS::GetWellKnownSymbol(cx,JS::SymbolCode::toStringTag)));
- return tag&&JS_DefineProperty(cx,ctor,"prototype",prototype,JSPROP_READONLY|JSPROP_PERMANENT)&&
+ return tag&&LeadFunctionKeys(cx,ctor)&&JS_DefineProperty(cx,ctor,"prototype",prototype,JSPROP_READONLY|JSPROP_PERMANENT)&&
   JS_DefineProperty(cx,prototype,"constructor",ctor,0)&&
   JS_DefinePropertyById(cx,prototype,id,tag,JSPROP_READONLY)&&
   JS_DefineProperty(cx,page,name,ctor,0)&&helpers.Interface(name,prototype)&&

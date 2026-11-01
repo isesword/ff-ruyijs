@@ -18,7 +18,8 @@ bool Accessor(State& s, PageHelpers& helpers, JS::HandleObject proto, const char
 }
 bool Finish(State& s, PageHelpers& helpers, const char* name,
             JS::HandleObject constructor, JS::HandleObject proto) {
-  return JS_DefineProperty(s.cx, constructor, "prototype", proto, JSPROP_READONLY | JSPROP_PERMANENT) &&
+  return LeadFunctionKeys(s.cx, constructor) &&
+      JS_DefineProperty(s.cx, constructor, "prototype", proto, JSPROP_READONLY | JSPROP_PERMANENT) &&
       JS_DefineProperty(s.cx, proto, "constructor", constructor, 0) && Tag(s.cx, proto, name) &&
       JS_DefineProperty(s.cx, s.page, name, constructor, 0) && helpers.Constructor(name, constructor);
 }
@@ -41,13 +42,9 @@ bool InstallXhr(State& s, PageHelpers& helpers) {
       !Finish(s, helpers, "XMLHttpRequestUpload", uploadCtor, s.xhrUploadPrototype)) return false;
   s.xhrPrototype = JS_NewObjectWithGivenProto(cx, nullptr, base);
   JS::RootedObject ctor(cx, NativeFunction(s, XhrConstructor, "XMLHttpRequest", 0, JSFUN_CONSTRUCTOR));
-  if (!s.xhrPrototype || !ctor) return false;
-  const char* constants[] = {"UNSENT", "OPENED", "HEADERS_RECEIVED", "LOADING", "DONE"};
-  for (int i = 0; i < 5; ++i) {
-    unsigned flags = JSPROP_ENUMERATE | JSPROP_READONLY | JSPROP_PERMANENT;
-    if (!JS_DefineProperty(cx, ctor, constants[i], i, flags) ||
-        !JS_DefineProperty(cx, s.xhrPrototype, constants[i], i, flags)) return false;
-  }
+  if (!s.xhrPrototype || !ctor || !LeadFunctionKeys(cx, ctor) ||
+      !JS_DefineProperty(cx, ctor, "prototype", s.xhrPrototype,
+                         JSPROP_READONLY | JSPROP_PERMANENT)) return false;
   if (!Accessor(s, helpers, s.xhrPrototype, "XMLHttpRequest", "onreadystatechange", XReadyHandler, true, true)) return false;
   for (int member = XReady; member <= (s.workerScope ? XText : XXml); ++member)
     if (!Accessor(s, helpers, s.xhrPrototype, "XMLHttpRequest", XhrMemberName(member), member,
@@ -64,6 +61,17 @@ bool InstallXhr(State& s, PageHelpers& helpers) {
     JS::RootedObject method(cx, NativeSlot(s, item.callback, item.name, item.length, item.op));
     if (!method || !JS_DefineProperty(cx, s.xhrPrototype, item.name, method, JSPROP_ENUMERATE) ||
         !helpers.Member(method, "XMLHttpRequest", item.name, "call")) return false;
+  }
+  // The state constants follow the interface's members on both the interface
+  // object and the prototype, ahead of the prototype's constructor key. The
+  // prototype copies stay configurable so the binding order pass can place
+  // them; it makes them permanent after the ordering (SealConstants).
+  const char* constants[] = {"UNSENT", "OPENED", "HEADERS_RECEIVED", "LOADING", "DONE"};
+  for (int i = 0; i < 5; ++i) {
+    unsigned flags = JSPROP_ENUMERATE | JSPROP_READONLY | JSPROP_PERMANENT;
+    if (!JS_DefineProperty(cx, ctor, constants[i], i, flags) ||
+        !JS_DefineProperty(cx, s.xhrPrototype, constants[i], i, flags & ~JSPROP_PERMANENT))
+      return false;
   }
   return Finish(s, helpers, "XMLHttpRequest", ctor, s.xhrPrototype);
 }

@@ -272,6 +272,15 @@ bool Error(JSContext* cx, const char* name, const char* message);
 bool Text(JSContext* cx, JS::HandleValue value, JS::MutableHandleString text, std::string* key);
 bool Option(JSContext* cx, JS::HandleObject object, const char* name, bool* value);
 bool InstallEvent(State& state);
+// JS_InitClass defines the permanent prototype key before the constructor's
+// lazy length/name keys resolve, so the interface object's own-key lead is
+// prototype-first. The donor's generated bindings answer length and name
+// first: create the prototype/function pair by hand in that order.
+bool InitClassOrdered(JSContext* cx, JS::HandleObject page, const JSClass* clasp,
+                      JS::HandleObject parent_prototype, const char* name,
+                      JSNative constructor, unsigned nargs,
+                      const JSPropertySpec* properties, const JSFunctionSpec* methods,
+                      JS::MutableHandleObject prototype, JS::MutableHandleObject function);
 // Event instances expose isTrusted as an own enumerable accessor (ruyijs parity and
 // monitor visibility), installed by one shared helper for every constructor.
 bool InstallTrusted(State& state, JS::HandleObject object);

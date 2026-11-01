@@ -30,6 +30,10 @@ bool Audio(JSContext* cx, unsigned argc, JS::Value* vp) {
 bool InstallAudioElement(State& state) {
   JS::RootedObject factory(state.cx, state.Function(Audio, "Audio", 0, 0,
                                                      JSFUN_CONSTRUCTOR));
+  // Resolve the lazy length/name keys before the permanent prototype key.
+  JS::RootedValue resolved(state.cx);
+  if (!JS_GetProperty(state.cx, factory, "length", &resolved) ||
+      !JS_GetProperty(state.cx, factory, "name", &resolved)) return false;
   JS::RootedObject prototype(state.cx, state.Find("HTMLAudioElement")->prototype);
   return factory && JS_DefineProperty(state.cx, factory, "prototype", prototype,
                                       JSPROP_READONLY | JSPROP_PERMANENT) &&

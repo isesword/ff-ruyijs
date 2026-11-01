@@ -23,13 +23,13 @@ bool InstallTarget(State& state) {
     JS_FN("removeEventListener", Remove, 2, JSPROP_ENUMERATE),
     JS_FN("dispatchEvent", Dispatch, 1, JSPROP_ENUMERATE), JS_FS_END
   };
-  JS::RootedObject prototype(state.cx, JS_InitClass(state.cx, state.page, &kTargetClass,
-      nullptr, "EventTarget", TargetConstructor, 0, nullptr, methods, nullptr, nullptr));
-  if (!prototype || !Tag(state.cx, prototype, "EventTarget")) return false;
+  JS::RootedObject prototype(state.cx), constructor(state.cx);
+  if (!InitClassOrdered(state.cx, state.page, &kTargetClass, nullptr, "EventTarget",
+                        TargetConstructor, 0, nullptr, methods, &prototype, &constructor))
+    return false;
+  if (!Tag(state.cx, prototype, "EventTarget")) return false;
   state.targetPrototype = prototype;
-  JS::RootedValue value(state.cx);
-  if (!JS_GetProperty(state.cx, state.page, "EventTarget", &value)) return false;
-  JS::RootedObject constructor(state.cx, &value.toObject());
+  JS::RootedValue value(state.cx, JS::ObjectValue(*constructor));
   if(!JS_DeleteProperty(state.cx,prototype,"constructor")||
      !JS_DefineProperty(state.cx,prototype,"constructor",value,0))return false;
   return state.helpers->Interface("EventTarget", prototype) &&

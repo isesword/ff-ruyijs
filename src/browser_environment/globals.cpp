@@ -143,7 +143,8 @@ bool State::Window(JS::HandleObject eventPrototype) {
   bool immutable = false;
   if (!JS_GetProperty(cx, eventPrototype, "constructor", &parent) || !parent.isObject()) return false;
   JS::RootedObject parentConstructor(cx, &parent.toObject());
-  return JS_SetPrototype(cx, constructor, parentConstructor) &&
+  return LeadFunctionKeys(cx, constructor) &&
+         JS_SetPrototype(cx, constructor, parentConstructor) &&
          JS_DefineProperty(cx, constructor, "prototype", prototype, JSPROP_READONLY | JSPROP_PERMANENT) &&
          JS_DefineProperty(cx, prototype, "constructor", constructor, 0) &&
          Tag(cx, prototype, "Window") &&

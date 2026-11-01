@@ -214,6 +214,7 @@ JSObject* InstallFontFace(JSContext* cx, JS::HandleObject page, PageHelpers& hel
   JS::RootedObject load(cx, Function(cx, LoadMethod, "load", 0));
   JS::RootedObject loaded(cx, Function(cx, LoadedGet, "get loaded", 0));
   if (!prototype || !constructor || !family_get || !family_set || !status || !load || !loaded ||
+      !LeadFunctionKeys(cx, constructor) ||
       !JS_DefineProperty(cx, constructor, "prototype", prototype,
                          JSPROP_READONLY | JSPROP_PERMANENT) ||
       !JS_DefineProperty(cx, prototype, "constructor", constructor, 0) ||
