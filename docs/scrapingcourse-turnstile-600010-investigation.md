@@ -453,3 +453,17 @@ AudioContext 延迟实测：FF159 = `baseLatency 0 / outputLatency 0 / 48000Hz`
 **12/13 一致**（唯一残差是基准文件里 FF 消息被截断的假差，实际 13/13）；
 tests 18/18。其余项（constraints 集合、notification、permissions、clipboard
 拒绝消息）全部一致。
+
+
+## 21. 第三轮审计：WebRTC 面（2026-11-02，FF 侧采集受阻待续）
+
+`/tmp/probe/rtc_probe_server.py`:8769（createOffer SDP 行结构 + 5s ICE gather +
+MutationObserver 式事件采集）。ruyijs 侧输出已归档（`rtc_ruyi.json`）：SDP 17 行
+（o=mozilla...THIS_IS_SDPARTA-99.0、ice-options:trickle、BUNDLE 0、
+datachannel m-line）、5 个 mDNS host candidates（2×UDP + 2×TCP tcptype active
++ 1 个非候选末项）、gathering complete。
+
+**FF159 侧采集 3 次失败**（页面无回传：无 JSON 无 error——页面脚本疑似未执行，
+原因待查：可能 rtc 页面 RTCPeerConnection 构造在此 profile 挂起，或加载竞态）。
+待续：改用 DevTools 手跑（用户协作模式，如 §18 的 navfields）拿到 FF 结构真值
+后对拍；重点核对 SDPARTA 版本号、candidate 数量与 TCP/UDP 配比、ufrag/pwd 长度。
