@@ -24,7 +24,76 @@ std::u16string Normalize(const std::u16string& source) {
   return text;
 }
 double Width(CTLineRef line, double scale) {
-  return std::round(CTLineGetTypographicBounds(line, nullptr, nullptr, nullptr) * 60) / 60 / scale;
+  // Firefox text runs carry app-unit-rounded advances per glyph, and canvas
+  // measureText answers their sum: rounding the whole line once (CoreText's
+  // own typographic width) drifts up to a few 1/60 px against it on
+  // multi-glyph strings.
+  double total = 0;
+  const auto runs = CTLineGetGlyphRuns(line);
+  for (CFIndex r = 0; r < CFArrayGetCount(runs); ++r) {
+    auto run = static_cast<CTRunRef>(CFArrayGetValueAtIndex(runs, r));
+    const CFIndex count = CTRunGetGlyphCount(run);
+    std::vector<CGSize> advances(size_t(count), CGSizeZero);
+    CTRunGetAdvances(run, CFRangeMake(0, count), advances.data());
+    for (CFIndex i = 0; i < count; ++i)
+      total += std::floor(advances[size_t(i)].width * 60 + .5);
+  }
+  return total / 60 / scale;
+}
+CTFontRef RunFont(CTRunRef run) {
+  return static_cast<CTFontRef>(CFDictionaryGetValue(CTRunGetAttributes(run), kCTFontAttributeName));
+}
+// Firefox computes a colour glyph's ink from its rendered bitmap, so the
+// numbers are whole device pixels (Apple Color Emoji answers 14/5 at 14px,
+// where the glyph-path bounds stop at 3.5). Render the glyph the way the
+// canvas mask path does and scan the painted extents.
+void UnionRenderedInk(CTFontRef font, CGGlyph glyph, const CGPoint& position,
+                      double scale, double x, double y,
+                      double* inkLeft, double* inkRight, double* inkTop, double* inkBottom) {
+  const double inverse = 1 / scale;
+  const auto transform = CGAffineTransformMake(inverse, 0, 0, -inverse,
+      x + position.x * inverse, y - position.y * inverse);
+  CanvasGlyphMask mask;
+  size_t budget = 4 * 1024 * 1024;
+  const uint8_t black[3] = {0, 0, 0};
+  if (!MacDrawGlyphMask(font, glyph, transform, black, &mask, &budget)) return;
+  int minX = mask.width, maxX = -1, minY = mask.height, maxY = -1;
+  if (!mask.coverage.empty()) {
+    for (int row = 0; row < mask.height; ++row) {
+      for (int column = 0; column < mask.width; ++column) {
+        if (mask.coverage[size_t(row) * size_t(mask.width) + size_t(column)]) {
+          if (column < minX) minX = column;
+          if (column > maxX) maxX = column;
+          if (row < minY) minY = row;
+          if (row > maxY) maxY = row;
+        }
+      }
+    }
+  } else {
+    for (const auto& layer : mask.layers) {
+      for (int row = 0; row < layer.height; ++row) {
+        for (int column = 0; column < layer.width; ++column) {
+          if (layer.coverage[size_t(row) * size_t(layer.width) + size_t(column)]) {
+            const int globalX = layer.left + column, globalY = layer.top + row;
+            if (globalX < minX) minX = globalX;
+            if (globalX > maxX) maxX = globalX;
+            if (globalY < minY) minY = globalY;
+            if (globalY > maxY) maxY = globalY;
+          }
+        }
+      }
+    }
+  }
+  if (maxX < 0) return;
+  // The mask space is CSS pixels, y-down, glyph origin at (x + pos, y - pos).
+  const double left = x + position.x * inverse + double(minX);
+  const double right = x + position.x * inverse + double(maxX + 1);
+  const double top = y - position.y * inverse + double(minY);
+  const double bottom = y - position.y * inverse + double(maxY + 1);
+  *inkLeft = std::min(*inkLeft, left - x);
+  *inkRight = std::max(*inkRight, right - x);
+  *inkTop = std::min(*inkTop, top - y);
+  *inkBottom = std::max(*inkBottom, bottom - y);
 }
 }  // namespace
 
@@ -56,6 +125,24 @@ bool SystemFonts::MeasureCanvas(const std::u16string& text, const FontInput& inp
     result->ink_right = CGRectGetMaxX(ink) / scale;
     result->ink_top = -CGRectGetMaxY(ink) / scale;
     result->ink_bottom = -CGRectGetMinY(ink) / scale;
+    // Colour bitmap glyphs (Apple Color Emoji) paint outside the vector
+    // bounds; union their rendered ink, as Firefox does from its bitmap.
+    const auto runs = CTLineGetGlyphRuns(line.get());
+    for (CFIndex r = 0; r < CFArrayGetCount(runs); ++r) {
+      auto run = static_cast<CTRunRef>(CFArrayGetValueAtIndex(runs, r));
+      const CTFontRef runFont = RunFont(run);
+      if (!runFont || !(CTFontGetSymbolicTraits(runFont) & kCTFontColorGlyphsTrait)) continue;
+      const CFIndex count = CTRunGetGlyphCount(run);
+      std::vector<CGGlyph> glyphs(size_t(count), 0);
+      std::vector<CGPoint> positions(size_t(count), CGPointZero);
+      CTRunGetGlyphs(run, CFRangeMake(0, count), glyphs.data());
+      CTRunGetPositions(run, CFRangeMake(0, count), positions.data());
+      for (CFIndex i = 0; i < count; ++i) {
+        UnionRenderedInk(runFont, glyphs[size_t(i)], positions[size_t(i)], scale,
+                         input.x, input.y, &result->ink_left, &result->ink_right,
+                         &result->ink_top, &result->ink_bottom);
+      }
+    }
   }
   return true;
 }
@@ -70,8 +157,9 @@ bool SystemFonts::Measure(const std::u16string& source, const FontInput& input,
   auto line = MacTextLine(*collection_, text, input);
   if (!line) return false;
   CGFloat ascent = 0, descent = 0;
-  const double width = CTLineGetTypographicBounds(line.get(), &ascent, &descent, nullptr) / input.scale;
+  CTLineGetTypographicBounds(line.get(), &ascent, &descent, nullptr);
   ascent /= input.scale; descent /= input.scale;
+  const double width = Width(line.get(), input.scale);
   const size_t visible = text.size() - (text.back() == u' ' ? 1 : 0);
   // CSS letter-spacing in CSS pixels, app-unit rounded like the Windows
   // pipeline (ShapeFont's spacing = round(letterSpacing * scale * 60)). Each
