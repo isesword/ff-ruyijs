@@ -160,8 +160,22 @@ StartResult Process::Start(std::wstring_view executable, std::string initial, Wo
     else if (kind == WorkerKind::Shared) command += L" --ruyijs-worker-kind shared";
     STARTUPINFOW startup{};startup.cb = sizeof(startup);
     PROCESS_INFORMATION information{};
+<<<<<<< HEAD
     if (!CreateProcessW(path.c_str(), command.data(), nullptr, nullptr, FALSE,
                         CREATE_NO_WINDOW | CREATE_SUSPENDED, nullptr, nullptr, &startup, &information))
+=======
+    // A shared engine's session gives its worker its own proxy and TLS release.
+    const PartitionRef partition = CurrentPartition();
+    std::wstring environment;
+    if (Overrides(*partition)) environment = EnvironmentBlock(*partition);
+    // DETACHED_PROCESS: no console and no conhost.exe; a worker talks over its
+    // RPC pipe only, and writes to absent standard handles are dropped.
+    if (!CreateProcessW(path.c_str(), command.data(), nullptr, nullptr, FALSE,
+                        DETACHED_PROCESS | CREATE_SUSPENDED |
+                            (environment.empty() ? 0 : CREATE_UNICODE_ENVIRONMENT),
+                        environment.empty() ? nullptr : environment.data(), nullptr, &startup,
+                        &information))
+>>>>>>> 1c21b9a (perf(engine): a jemalloc arena per session; Windows children start without a console)
       return fail(StartError::Create, GetLastError());
     process_ = information.hProcess;
     if (!AssignProcessToJobObject(job_, process_)) {

@@ -11,6 +11,113 @@ def replace_once(source, old, new):
     return source.replace(old, new, 1)
 
 
+SESSION_THREADS = """\
+#if defined(MOZ_MEMORY) && __has_include("mozmemory.h")
+#  include "mozmemory.h"
+#  define RUYIJS_SESSION_ARENA 1
+#endif
+
+struct RuyijsSessionInput {
+  JSRuntime* parentRuntime;
+  JS::ContextOptions options;
+  ruyijs::SessionRecord* record;
+};
+
+static void RuyijsSessionMain(RuyijsSessionInput input) {
+#ifdef RUYIJS_SESSION_ARENA
+  // A session thread runs a page's DOM and scripts the way Firefox's main
+  // thread does, and gets a jemalloc arena of its own as that thread does
+  // (nsThreadManager::Init): sessions then do not contend on the lock of the
+  // default arena (16 sessions building a DOM at once took 16 times the CPU
+  // of one). mozjemalloc never frees an arena; declared before the context,
+  // this scope exit runs after the context is gone and returns the session's
+  // free pages to the system.
+  jemalloc_thread_local_arena(true);
+  auto releaseArena = MakeScopeExit([] { jemalloc_free_dirty_pages(); });
+#endif
+  JSContext* cx = JS_NewContext(JS::DefaultHeapMaxBytes, input.parentRuntime);
+  auto destroyContext = MakeScopeExit([cx] {
+    if (cx) JS_DestroyContext(cx);
+  });
+  UniquePtr<ShellContext> sc;
+  bool ready = cx != nullptr;
+  if (ready) {
+    sc = MakeUnique<ShellContext>(cx, ShellContext::Worker);
+    ready = sc && sc->registerWithCx(cx);
+  }
+  if (ready) {
+    JS::ContextOptionsRef(cx) = input.options;
+    JS_SetNativeStackQuota(cx, 128 * sizeof(size_t) * 1024);
+    JS_SetTrustedPrincipals(cx, &ShellPrincipals::fullyTrusted);
+    JS_SetSecurityCallbacks(cx, &ShellPrincipals::securityCallbacks);
+    JS_SetWrapObjectCallbacks(cx, &ShellWrapObjectCallbacks);
+    JS_AddInterruptCallback(cx, ShellInterruptCallback);
+    JS::InitConsumeStreamCallback(cx, ConsumeBufferSource, ReportStreamError);
+    JS::SetPromiseRejectionTrackerCallback(
+        cx, ForwardingPromiseRejectionTrackerCallback);
+    JS::dbg::SetDebuggerMallocSizeOf(cx, moz_malloc_size_of);
+    ready = JS::InitSelfHostedCode(cx);
+  }
+  if (ready) {
+    // As Shell() does for the main thread: the session runs inside a shell
+    // global's realm, with the process-wide module load path.
+    EnvironmentPreparer environmentPreparer(cx);
+    JS::RealmOptions realmOptions;
+    SetStandardRealmOptions(cx, realmOptions);
+    RootedObject glob(cx, NewGlobalObject(cx, realmOptions, nullptr,
+                                          ShellGlobalKind::WindowProxy,
+                                          /* immutablePrototype = */ true));
+    if (glob) {
+      JSAutoRealm ar(cx, glob);
+      JS::ConstUTF8CharsZ path(processWideModuleLoadPath.get(),
+                               strlen(processWideModuleLoadPath.get()));
+      RootedString moduleLoadPath(cx, JS_NewStringCopyUTF8Z(cx, path));
+      sc->moduleLoader = js::MakeUnique<ModuleLoader>();
+      if (moduleLoadPath && sc->moduleLoader &&
+          sc->moduleLoader->init(cx, moduleLoadPath)) {
+        {
+          AutoReportException are(cx);
+          ruyijs::RunHostedSession(cx, input.record, RunShellJobs);
+        }
+        RunShellJobs(cx);
+        KillWatchdog(cx);
+        return;
+      }
+    }
+  }
+  ruyijs::RunHostedSession(nullptr, input.record, RunShellJobs);
+  if (cx) {
+    KillWatchdog(cx);
+  }
+}
+
+static void* RuyijsStartSession(JSContext* cx, ruyijs::SessionRecord* record) {
+  // The main thread's 8 MiB stack, so native recursion has the same room.
+  js::Thread* thread =
+      js_new<js::Thread>(js::Thread::Options().setStackSize(8 * 1024 * 1024));
+  if (!thread) {
+    return nullptr;
+  }
+  RuyijsSessionInput input{JS_GetRuntime(cx), JS::ContextOptionsRef(cx), record};
+  if (!thread->init(RuyijsSessionMain, std::move(input))) {
+    js_delete(thread);
+    return nullptr;
+  }
+  return thread;
+}
+
+static void RuyijsJoinSession(void* thread) {
+  auto* session = static_cast<js::Thread*>(thread);
+  session->join();
+  js_delete(session);
+}
+
+static const ruyijs::SessionThreads kRuyijsSessionThreads = {RuyijsStartSession,
+                                                             RuyijsJoinSession};
+
+"""
+
+
 def generate(donor, root, directory):
     original = donor.src / "js/src/shell/js.cpp"
     source = original.read_text(encoding="utf-8")
