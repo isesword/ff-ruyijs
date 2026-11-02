@@ -42,6 +42,16 @@ bool PageLoad::ScriptPort(void* context,document_model::Realm& document,interact
 }
 bool PageLoad::Dynamic(Owners& owners,JS::HandleObject script,bool external) {
   auto* cx=owners.cx;
+  if (FILE* dbg = fopen("/tmp/probe/pl_trace.txt", "a")) {
+    JS::RootedValue type_dbg(cx);
+    std::string t = "(unreadable)";
+    if (owners.document.ScriptAttribute(script, u"type", &type_dbg) && type_dbg.isString()) {
+      JS::RootedString ts(cx, type_dbg.toString());
+      if (!ruyijs::ToUTF8(cx, ts, &t)) t = "(toUtf8 fail)";
+    }
+    fprintf(dbg, "[dynamic] external=%d type=%s\n", external ? 1 : 0, t.c_str());
+    fclose(dbg);
+  }
   JSAutoRealm realm(cx,owners.page);
   JS::RootedValue href(cx);
   if(!owners.environment.URL(&href)||!href.isString())return false;
@@ -66,20 +76,33 @@ bool PageLoad::Dynamic(Owners& owners,JS::HandleObject script,bool external) {
     }
   }
   if(is_module){
-    // Modules run through the realm's ModuleSession (Load + Evaluate), never
-    // through classic Execute: import/export would not even parse there.
+    if (FILE* dbg = fopen("/tmp/probe/pl_trace.txt", "a")) {
+      fprintf(dbg, "[dyn-module] entered code=%d\n", code ? 1 : 0); fclose(dbg);
+    }
     BrowsingContext* context=Find(owners.document);
     if(!context||!context->moduleSession)return owners.events.Fire(script,"error",false,false);
+    if (FILE* dbg = fopen("/tmp/probe/pl_trace.txt", "a")) {
+      fprintf(dbg, "[dyn-module] context ok\n"); fclose(dbg);
+    }
     ModuleSession& session=*context->moduleSession;
     JS::RootedObject module(cx);
     std::string sourceText;
     if(!ToUTF8(cx,code,&sourceText))return false;
+    if (FILE* dbg = fopen("/tmp/probe/pl_trace.txt", "a")) {
+      fprintf(dbg, "[dyn-module] source ok, url=%s\n", url.c_str()); fclose(dbg);
+    }
     const std::string module_url=url.empty()?base:url;
     JS::RootedValue promise(cx);
     bool loaded=false;
     {
       ModuleSession::Scope scope(session);
+      if (FILE* dbg = fopen("/tmp/probe/pl_trace.txt", "a")) {
+        fprintf(dbg, "[dyn-module] before Load\n"); fclose(dbg);
+      }
       loaded=session.Load(module_url,sourceText,&module);
+      if (FILE* dbg = fopen("/tmp/probe/pl_trace.txt", "a")) {
+        fprintf(dbg, "[dyn-module] after Load loaded=%d\n", loaded); fclose(dbg);
+      }
       if(loaded)loaded=session.Evaluate(module,&promise);
     }
     if(!loaded)return owners.events.Fire(script,"error",false,false);
