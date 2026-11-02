@@ -8,6 +8,7 @@
 #include "runtime/exception_capture.h"
 #include "runtime/host_bridge.h"
 #include "runtime/arguments.h"
+#include "runtime/surface_parity.h"
 #include "interaction/realm.h"
 #include "browser_environment/environment.h"
 #include "runtime/environment_control.h"
@@ -259,6 +260,9 @@ bool Run(JSContext* cx, js::cli::OptionParser* options, Checkpoint checkpoint) {
   if (!LinkInterfaceObjects(cx, page)) return false;
   // ...and every installed prototype takes Firefox's binding member order.
   if (!OrderInterfacePrototypes(cx, page)) return false;
+  // FF159-measured members the per-subsystem installers had not covered:
+  // presence stubs added last so every real member keeps winning (§28).
+  if (!InstallSurfaceParity(cx, page)) return false;
   resources->SetAbortDelayPort([](void* context,JS::HandleObject fn,double delay){
     return static_cast<execution_scheduling::Realm*>(context)->PostDelayedTask(fn,delay);
   },scheduling.get());
@@ -358,7 +362,8 @@ bool Run(JSContext* cx, js::cli::OptionParser* options, Checkpoint checkpoint) {
     return target.resources->InstallInto(*target.helpers, *target.interaction)&&
       target.environment->InstallFileSystem()&&
       binding.scheduling.InstallTasks(global,*target.helpers,*target.interaction)&&
-      LinkInterfaceObjects(target.cx, global) && OrderInterfacePrototypes(target.cx, global);
+      LinkInterfaceObjects(target.cx, global) && OrderInterfacePrototypes(target.cx, global) &&
+      InstallSurfaceParity(target.cx, global);
   };
   frames->SetResourcePort(installResources, &frameResourceBinding);
   top->SetResourcePort(installResources, &frameResourceBinding);
