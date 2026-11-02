@@ -18,21 +18,49 @@ using execution_scheduling::Error;
 // interrupt callback then runs in that frame and records its caller.
 namespace {
 std::atomic<JSContext*> gHangCx{nullptr};
-std::atomic<long> gPetted{0};
+std::atomic<double> gPettedStore{0.0};
 std::atomic<bool> gArmed{false};
+
+double SteadyNow() {
+  return std::chrono::duration<double>(
+      std::chrono::steady_clock::now().time_since_epoch()).count();
+}
 
 bool HangProbe(JSContext* cx) {
   JS::AutoFilename file;
   uint32_t line = 0;
   JS::ColumnNumberOneOrigin column(0);
   const bool scripted = JS::DescribeScriptedCaller(&file, cx, &line, &column);
-  if (FILE* dbg = fopen("/tmp/probe/hang_stack.txt", "a")) {
-    fprintf(dbg, "[hang] scripted=%d caller=%s:%u:%u\n", scripted ? 1 : 0,
+  if (FILE* dbg = fopen("/tmp/probe/hang_trace.txt", "a")) {
+    fprintf(dbg, "%.3f %s:%u:%u", 
+            std::chrono::duration<double, std::milli>(
+                std::chrono::steady_clock::now().time_since_epoch()).count(),
             scripted && file.get() ? file.get() : "(none)", line,
             column.oneOriginValue());
+    // The probe's live counters (window.__stats) ride along: read them right
+    // here inside the spinning frame's global.
+    JS::RootedObject global(cx, JS::CurrentGlobalOrNull(cx));
+    if (global) {
+      JS::RootedValue stats(cx);
+      if (JS_GetProperty(cx, global, "__stats", &stats) && stats.isObject()) {
+        JS::RootedObject object(cx, &stats.toObject());
+        for (const char* name : {"mathRandom", "getRandomValues", "getRandomBytes",
+                                 "dateNow", "perfNow", "workerCtor", "fetchCalls",
+                                 "xhrSend", "msgIn", "msgOut", "evalCalls", "functionCtor"}) {
+          JS::RootedValue number(cx);
+          double out = -1;
+          if (JS_GetProperty(cx, object, name, &number) && number.isNumber())
+            out = number.toNumber();
+          fprintf(dbg, " %s=%.0f", name, out);
+        }
+      }
+    }
+    fputc('\n', dbg);
     fclose(dbg);
   }
-  gPetted = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+  const double now = std::chrono::duration<double>(
+      std::chrono::steady_clock::now().time_since_epoch()).count();
+  gPettedStore = now;
   return true;
 }
 
@@ -44,16 +72,15 @@ void ArmHangWatchdog(JSContext* cx) {
     JS_AddInterruptCallback(cx, HangProbe);
     std::thread([] {
       for (;;) {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
         if (!gArmed.load()) continue;
-        const long now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-        if (now - gPetted.load() >= 8) {
+        if (SteadyNow() - gPettedStore.load() >= 0.5) {
           if (auto* context = gHangCx.load()) JS_RequestInterruptCallback(context);
         }
       }
     }).detach();
   }
-  gPetted = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+  gPettedStore = SteadyNow();
   gArmed = true;
 }
 }

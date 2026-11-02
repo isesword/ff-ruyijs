@@ -788,3 +788,29 @@ IP 信誉**（209.126.8.142 DC 段）对所有人加压。引擎的差距变为�
 **canvas 分解结论**（getImageData 逐像素）：fillRect/strokeLine/gradient
 **像素完全一致** —— Skia 解析光栅化移植正确；剩余两处为 ①fillText 字形
 光栅化（mac 上 FF 走 CoreText）②PNG 编码器字节（同像素不同压缩）。
+
+
+### §29 方法论落地：自旋期 API 消费全零 + 程序差异假设（2026-11-04）
+
+**新增基建**：看门狗 0.5s 高频轨迹（`/tmp/probe/hang_trace.txt`，中断回调内
+DescribeScriptedCaller + 顺带快照 widget 全局的 `__stats` 消费计数）；注入
+探针 v2 包裹 Math.random/getRandomValues/时钟/Worker/fetch/eval。
+
+**自旋期测量（IPPure，1550 次捕获 / 13 分钟）**：
+
+- 轨迹形态：VM 解释器在固定调度点集合间循环（260272/224584 等 58 个站点，
+  上跳 627 次/下跳 637 次）——非顺序字节流消费，是调度器空转
+- **API 消费全零且恒定**：mathRandom=0、getRandomValues=0、dateNow=12
+  （boot 期）、fetch/xhr=0 —— 自旋不是在搜索随机 nonce，是**纯内部状态
+  循环**，即 VM 在等某个永不到来的内部事件
+- widget 事件循环被自旋阻塞（探针的 5s 定时器永不触发）——计数只能靠
+  引擎中断回调快照读出
+
+**排除清单（本轮新增）**：GC/分配吞吐（引擎 78ms ≈ donor SM shell 69ms，
+同引擎基线）；SAB/Atomics（引擎与 FF 非隔离页面同样无 SharedArrayBuffer）。
+
+**新假设（程序差异）**：引擎与 FF 收到的 fo 挑战程序**字节数不同**（引擎
+878476/878668 vs FF 858624/894456）——服务端按各自探测结果派发不同程序。
+若 FF 的程序 165s 可解而引擎的程序无解/超难，则检测点在 **fo 交换之前的
+探测阶段**。验证实验：FF headless 与引擎**并发**跑同出口，同刻对比双方
+fo 请求/响应尺寸与轮次。次选：静态去扁平化挑战 VM 读退出条件。
