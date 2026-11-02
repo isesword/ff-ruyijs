@@ -531,3 +531,17 @@ css.supports color）——**全部已在 §18/§20 与真 FF159 穷举对拍一
 → **判定不在采集值，而在引擎响应读取的行为特征或 /fo/ 之外的深层服务端信号**。
 这两者都无法静态对拍（前者是引擎实现微观行为，后者是 CF 服务端黑盒）。
 静态可查的检测点地图已 100% 覆盖并收敛。
+
+
+### §20 时间系统校准（同日，多源交叉）
+
+`/tmp/probe/time_probe_server.py`（tp2 页）+ Chrome DevTools MCP 参考跑：
+**Chrome（无 RFP 缩减参考）**：now() 精度 0.1ms（1000 读 4 唯一值）、
+scheduleGap [3, 1.5, 5]、5s 推进比值 5002/5002.4、eventTimeStamp 与 now 差 0。
+**ruyijs**：timeOrigin Unix ms 量级正确、`timeOrigin + now - Date.now() = 0`
+（三者完美对齐）、now() 1000 读 unique=1（1ms RFP 网格生效）、scheduleGap0=3
+（clamp 生效）、**Date vs 宿主墙钟偏差 -0.3ms**。FF159 侧：tprobe 实测
+setTimeoutDrift 2/2/5/10/50/100、now 200 读 unique=1（同 1ms 网格）——**与
+ruyijs 一致**。FF159 tp2 页级精确对拍因页面回传不稳定未完成（无音频设备的
+headed 会话限制），时间系统判定为**已校准同步**（三源交叉：FF tprobe 网格 =
+ruyijs 网格；Date 墙钟偏差 0.3ms；推进比值正常）。
