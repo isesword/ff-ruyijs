@@ -42,16 +42,6 @@ bool PageLoad::ScriptPort(void* context,document_model::Realm& document,interact
 }
 bool PageLoad::Dynamic(Owners& owners,JS::HandleObject script,bool external) {
   auto* cx=owners.cx;
-  if (FILE* dbg = fopen("/tmp/probe/pl_trace.txt", "a")) {
-    JS::RootedValue type_dbg(cx);
-    std::string t = "(unreadable)";
-    if (owners.document.ScriptAttribute(script, u"type", &type_dbg) && type_dbg.isString()) {
-      JS::RootedString ts(cx, type_dbg.toString());
-      if (!ruyijs::ToUTF8(cx, ts, &t)) t = "(toUtf8 fail)";
-    }
-    fprintf(dbg, "[dynamic] external=%d type=%s\n", external ? 1 : 0, t.c_str());
-    fclose(dbg);
-  }
   JSAutoRealm realm(cx,owners.page);
   JS::RootedValue href(cx);
   if(!owners.environment.URL(&href)||!href.isString())return false;
@@ -63,44 +53,34 @@ bool PageLoad::Dynamic(Owners& owners,JS::HandleObject script,bool external) {
      &context->resources->Resources()!=&resources_)frame=context->resources.get();
   const bool background=external&&DynamicPreloadUrl(owners,script,base,&url)&&
       (StartPreload(url,frame),PreloadPending(PreloadKey(owners.resources,url)));
-  if(!background&&!Source(owners,script,base,&code,&filename,&defer,&failed))return false;
   bool is_module=false;
-  {
-    JS::RootedValue type(cx);
-    if(!owners.document.ScriptAttribute(script,u"type",&type))return false;
-    if(type.isString()){
-      JS::RootedString typeString(cx,type.toString());
-      std::string t;
-      if(!ToUTF8(cx,typeString,&t))return false;
-      is_module=ruyijs::domain::document_model::script_module<char>(t);
-    }
-  }
+  if(!background&&!Source(owners,script,base,&code,&filename,&defer,&failed,&is_module))return false;
   if(is_module){
-    if (FILE* dbg = fopen("/tmp/probe/pl_trace.txt", "a")) {
-      fprintf(dbg, "[dyn-module] entered code=%d\n", code ? 1 : 0); fclose(dbg);
-    }
     BrowsingContext* context=Find(owners.document);
     if(!context||!context->moduleSession)return owners.events.Fire(script,"error",false,false);
-    if (FILE* dbg = fopen("/tmp/probe/pl_trace.txt", "a")) {
-      fprintf(dbg, "[dyn-module] context ok\n"); fclose(dbg);
+    if(!code){
+      // A failed module fetch reports on the element; an unfetched inline
+      // module falls back to its text content (Source only reads it on the
+      // parser path).
+      if(failed)return owners.events.Fire(script,"error",false,false);
+      JS::RootedValue inline_text(cx);
+      if(!owners.document.ScriptText(script,&inline_text)||!inline_text.isString())
+        return owners.events.Fire(script,"error",false,false);
+      code.set(inline_text.toString());
     }
-    if(!code)return true;  // Dynamically-inserted inline modules may have no code; skip silently.
     ModuleSession& session=*context->moduleSession;
     JS::RootedObject module(cx);
     std::string sourceText;
     if(!ToUTF8(cx,code,&sourceText))return false;
-    const std::string module_url=url.empty()?base:url;
+    // Source names an external module by its resolved request URL (its module
+    // map key, and the base its imports resolve against); an inline module has
+    // no filename and keys by the document URL, as Firefox does.
+    const std::string module_url=!filename.empty()?filename:base;
     JS::RootedValue promise(cx);
     bool loaded=false;
     {
       ModuleSession::Scope scope(session);
-      if (FILE* dbg = fopen("/tmp/probe/pl_trace.txt", "a")) {
-        fprintf(dbg, "[dyn-module] before Load url=%s\\n", module_url.c_str()); fclose(dbg);
-      }
       loaded=session.Load(module_url,sourceText,&module);
-      if (FILE* dbg = fopen("/tmp/probe/pl_trace.txt", "a")) {
-        fprintf(dbg, "[dyn-module] after Load loaded=%d\\n", loaded); fclose(dbg);
-      }
       if(loaded)loaded=session.Evaluate(module,&promise);
     }
     if(!loaded)return owners.events.Fire(script,"error",false,false);

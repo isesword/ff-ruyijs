@@ -419,14 +419,6 @@ bool PageLoad::Produce(Owners& owners, JS::HandleString html, JS::MutableHandleV
       bool defer = false;
       bool module = false;
       if (!Source(owners, script, base, &code, &filename, &defer, nullptr, &module)) return false;
-      {
-        FILE* dbg = fopen("/tmp/probe/pl_trace.txt", "a");
-        if (dbg) {
-          fprintf(dbg, "[script] code=%d defer=%d module=%d type-info file=%.60s\n",
-                  code ? 1 : 0, defer, module, filename.c_str());
-          fclose(dbg);
-        }
-      }
       if (!code) continue;
       if (order && order->Contains(filename)) {
         JS::RootedValue async(cx);
@@ -519,8 +511,6 @@ bool PageLoad::Produce(Owners& owners, JS::HandleString html, JS::MutableHandleV
       {
         ModuleSession::Scope scope(session);
         loaded = session.Load(names[index], sourceText, &module);
-        if (FILE* dbg = fopen("/tmp/probe/pl_trace.txt", "a"))
-          { fprintf(dbg, "[module-load] %s -> %s\n", names[index].c_str(), loaded ? "ok" : "FAIL"); fclose(dbg); }
         if (loaded) loaded = session.Evaluate(module, &promise);
       }
       if (!loaded) {

@@ -110,9 +110,6 @@ bool PageLoad::Source(Owners& owners, JS::HandleObject script, const std::string
   }
   is_module = ModuleType(text);
   if (module) *module = is_module;
-  if (FILE* dbg = fopen("/tmp/probe/pl_trace.txt", "a")) {
-    fprintf(dbg, "[source] is_module=%d text=%.40s src_null=%d\n", is_module, text.c_str(), src.isNull()); fclose(dbg);
-  }
   if (is_module && !module) return true;
   if (!is_module && !ruyijs::domain::document_model::script_classic<char>(text)) return true;
   if (!is_module) {
