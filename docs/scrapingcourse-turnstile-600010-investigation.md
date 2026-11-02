@@ -595,3 +595,17 @@ L1 已双极排除。**与文章方案对比表中"官方 API"之外的最强状
 间隔 min 0 max 69 avg 9.6 / down=click 落点一致。tests 18/18。
 **Turnstile：仍 600010**（`result-humanized.json`）——L6 轨迹已真人化，verdict
 不变，行为层的增益需 CF 侧开启行为分析才可观测。
+
+
+### §23 补充（同日）：根因确认为引擎缺 ES module script 执行
+
+IPPure 页是 VitePress（全 ES module 构建）。实测引擎内：
+- `<script type="module">` 最小用例**不执行**（经典 script 正常）
+- 页面 net_log 中 **0 个 /assets/ JS 请求**（app module 与全部 chunk 从未加载）
+- Rocket Loader 加载了但只处理经典脚本，跳过 module
+
+**影响面**：所有以 ES module 为入口的现代站点（Vite/VitePress/webpack-ESM/Next
+等）在本引擎上 JS 整体不工作——页面为纯静态骨架。这是引擎的功能缺口（非
+表面差异），也是 IPPure 检测组件静默的原因。修复需实现 SM159 的 module 加载
+（JS::CompileModule/Instantiate/Evaluate + 动态 import 钩子，中等规模工程），
+完成后现代 ESM 站点整体可用，IPPure 检测也随之工作（可作为环境分的直接试金石）。
