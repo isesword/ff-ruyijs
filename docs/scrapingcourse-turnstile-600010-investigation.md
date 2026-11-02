@@ -481,3 +481,18 @@ gathering complete。tests 18/18。
 WebRTC 面审计关闭。Windows-bias 审计累计：音频（真值一致）、摄像头（已补）、
 timer 精度（一致）、ICE 接口数（已修）——剩余大项仅 socket process 架构与
 macOS QoS 实验。
+
+
+## 22. 全修复后双路验证（§21 收尾，2026-11-02 深夜）
+
+全部 24 轮修复落地后双路实测：
+- Contabo 代理（`212.56.47.88`）：挑战交互正常（2× POST /fo/ 200），**仍 600010**
+  （`result-after-ice.json`）
+- 住宅直连（北京联通）：**同样 wait_turnstile 失败**（`result-ice-direct.json`）
+
+至此本轮系统性攻坚的最终账本：声明面、枚举面（1500+ 项）、原型链、音频
+（bit-exact）、canvas（fill/stroke bit-exact）、设备枚举（含摄像头）、ICE 接口数、
+setTimeout 签名、时序三软信号、IP（DC/住宅）、身份交叉——**全部收敛或排除**。
+残余差距锁定在：不可静态对拍的派生行为（光栅化非确定性、GC/JIT 节奏、事件循环
+微观调度）、或 inner 分支的私有环境实现。后续突破依赖 inner 的信息（只有作者
+持有）或 CF 探测的持续逆向。
