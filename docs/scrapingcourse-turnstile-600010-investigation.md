@@ -467,3 +467,17 @@ datachannel m-line）、5 个 mDNS host candidates（2×UDP + 2×TCP tcptype act
 原因待查：可能 rtc 页面 RTCPeerConnection 构造在此 profile 挂起，或加载竞态）。
 待续：改用 DevTools 手跑（用户协作模式，如 §18 的 navfields）拿到 FF 结构真值
 后对拍；重点核对 SDPARTA 版本号、candidate 数量与 TCP/UDP 配比、ufrag/pwd 长度。
+
+
+### §21 收尾：ICE candidates 接口数已修（同日）
+
+FF159 真机实测（单接口 mac）：**1 个 mDNS 主机名 × (UDP priority 2122252543 +
+TCP active 2105524479) = 2 条候选 + 空结尾，foundation 0/1，编号 candidate:0/1**。
+我们原实现写死模拟"两个本地接口"（2 UUID × 4 条）。已按实测修正
+`web_rtc/ice_gathering.cpp`（单 mDNS 名、foundation 0/1、priority 对齐）。
+复测：SDP 17 行结构一致（ice-pwd 随机值除外）、**candidates 3 = 3 完全同构**、
+gathering complete。tests 18/18。
+
+WebRTC 面审计关闭。Windows-bias 审计累计：音频（真值一致）、摄像头（已补）、
+timer 精度（一致）、ICE 接口数（已修）——剩余大项仅 socket process 架构与
+macOS QoS 实验。

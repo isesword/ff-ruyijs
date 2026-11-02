@@ -29,22 +29,19 @@ std::string Uuid() {
   return text;
 }
 std::vector<Line> HostCandidates(const std::vector<IceSection>& sections) {
-  // Firefox priorities of its two local interfaces (UDP host, TCP active host).
-  static const uint32_t kUdp[] = {2122187007u, 2122252543u}, kTcp[] = {2105458943u, 2105524479u};
-  const std::string names[] = {Uuid() + ".local", Uuid() + ".local"};
+  // Measured on Firefox 159 over a single-interface mac: one mDNS host name
+  // answers with a UDP candidate on a fresh port (priority 2122252543) and a
+  // TCP active candidate on port 9 (priority 2105524479), foundations 0 and 1.
+  const std::string name = Uuid() + ".local";
   uint32_t port = 49152 + uint32_t(Random()() % 14000);
   std::vector<Line> lines;
   for (size_t m = 0; m < sections.size(); ++m) {
     const int components = sections[m].kind == "application" ? 1 : 2;
     for (int component = 1; component <= components; ++component) {
-      for (int i = 0; i < 2; ++i)
-        lines.push_back({"candidate:" + std::to_string(i * 2) + " " + std::to_string(component) + " UDP " +
-                             std::to_string(kUdp[i] - uint32_t(component - 1)) + " " + names[i] + " " +
-                             std::to_string(port++) + " typ host", sections[m].mid, sections[m].index});
-      for (int i = 0; i < 2; ++i)
-        lines.push_back({"candidate:" + std::to_string(4 + i) + " " + std::to_string(component) + " TCP " +
-                             std::to_string(kTcp[i] - uint32_t(component - 1)) + " " + names[i] +
-                             " 9 typ host tcptype active", sections[m].mid, sections[m].index});
+      lines.push_back({"candidate:0 " + std::to_string(component) + " UDP 2122252543 " + name + " " +
+                           std::to_string(port++) + " typ host", sections[m].mid, sections[m].index});
+      lines.push_back({"candidate:1 " + std::to_string(component) + " TCP 2105524479 " + name +
+                           " 9 typ host tcptype active", sections[m].mid, sections[m].index});
     }
   }
   return lines;
