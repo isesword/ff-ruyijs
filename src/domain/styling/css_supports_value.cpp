@@ -163,6 +163,17 @@ bool CssSupportsProperty(const std::string& property,const std::string& input) {
   if(name=="container-type") return Keyword(lower,"normal,size,inline-size");
   if(name=="place-items") {auto words=Words(lower);if(words.empty()||words.size()>2) return false;for(auto& word:words) if(!Keyword(CssLower(word),"normal,stretch,center,start,end,flex-start,flex-end,self-start,self-end,baseline,first baseline,last baseline,safe center,unsafe center,legacy left,legacy right,unsafe legacy left,unsafe legacy right")) return false;return true;}
   if(name=="forced-color-adjust") return Keyword(lower,"auto,none,preserve-parent-color");
+  // Firefox supports appearance (and the -moz/-webkit aliases) with the full
+  // compat keyword set; print-color-adjust + its -color-adjust alias too.
+  if(name=="appearance"||name=="-webkit-appearance"||name=="-moz-appearance")
+    return Keyword(lower,"auto,none,button,checkbox,radio,searchfield,searchfield-decoration,"
+        "textfield,textarea,push-button,button-bevel,slider-horizontal,menulist,"
+        "menulist-button,menulist-text,menulist-textfield,progress-bar,meter,range,"
+        "listbox,listitem,compat-auto,compat,status-bar,status-bar-field,resizer,"
+        "inner-spin-button,square-button,caret,color-well,checkbox-container,"
+        "radio-container,progress-inner-value");
+  if(name=="print-color-adjust"||name=="color-adjust")
+    return Keyword(lower,"economy,exact,auto");
   if(name=="color"||name.find("color")!=name.npos) return CssColorSupported(lower);
   if(name=="line-height") return lower=="normal"||CssNumericAllowed(lower,CssNumber|CssLength|CssPercent,false);
   if(name=="width"||name=="height"||name.find("-width")!=name.npos||name.find("-height")!=name.npos) {

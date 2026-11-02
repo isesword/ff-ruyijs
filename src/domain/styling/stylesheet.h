@@ -821,6 +821,9 @@ private:
         static const std::map<std::string, std::string> table = [] {
           std::map<std::string, std::string> values = {
             {"display", "inline"}, {"color", "rgb(0, 0, 0)"},
+            {"appearance", "auto"}, {"-webkit-appearance", "auto"},
+            {"-moz-appearance", "auto"}, {"print-color-adjust", "economy"},
+            {"color-adjust", "economy"},
             {"background-color", "rgba(0, 0, 0, 0)"}, {"background-image", "none"},
             {"width", "auto"}, {"height", "auto"}, {"min-width", "auto"}, {"min-height", "auto"},
             {"max-width", "none"}, {"max-height", "none"},
