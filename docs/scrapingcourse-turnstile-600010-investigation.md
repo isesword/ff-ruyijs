@@ -639,3 +639,13 @@ CF 托管质询同样未通过**——网络全 200、SW 健康、指纹变体�
 本轮 ES module 缺口的修复价值因此更清晰：**IPPure 的企业版 Bot Management 风险
 指数 + Turnstile 双模式 + reCAPTCHA 分数是一个现成的、可视化的、免费的 mac 环境
 评分器**——引擎补上 module 执行后即可用它持续量化派生面的收敛进度。
+
+
+### §23 调试中（同日深夜）：PrepareScript 的 module 条件已放宽，内联 module 仍未达
+
+已修：PrepareScript 的 module 条件去掉 `src&&!src->empty()` 与 `parser` 限制
+（内联 module 与动态 module 不再被 preparation 拒绝）。但实测 parser 内联
+module（type="module" 无 src）仍不执行——断点在 PageLoad 循环之后
+（ModuleSession::Load 未触发或更早）。下一步：在 page_load.cpp 的 Source/主
+循环加临时插桩，打印每个 script 的 type/module 判定/deferred 归类，定位
+内联 module 从 preparation 到 module 循环之间哪一环丢失。

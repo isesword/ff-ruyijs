@@ -23,6 +23,22 @@ template<class Char> std::basic_string_view<Char> rocket_loader_essence(std::bas
   if(i>=4&&i<value.size()&&value[i]==(Char)'-')return value.substr(i+1);
   return value;
 }
+// The "module" essence after Rocket Loader stripping: true when the script is
+// an ES module (the module owner's pipeline, distinct from classic Execute).
+template<class Char> bool script_module(std::basic_string_view<Char> value) {
+  value = rocket_loader_essence(value);
+  auto space=[](Char c){return c==9||c==10||c==12||c==13||c==32;};
+  while(!value.empty()&&space(value.front()))value.remove_prefix(1);
+  while(!value.empty()&&space(value.back()))value.remove_suffix(1);
+  if(value.size()!=6)return false;
+  constexpr Char expected[]={'m','o','d','u','l','e'};
+  for(size_t i=0;i<6;++i){
+    auto c=value[i];if(c>='A'&&c<='Z')c+=32;
+    if(c!=expected[i])return false;
+  }
+  return true;
+}
+
 // HTML JavaScript MIME type essence matching, shared by preparation and loading.
 template<class Char> bool script_classic(std::basic_string_view<Char> value) {
   value=rocket_loader_essence(value);

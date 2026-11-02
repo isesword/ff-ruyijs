@@ -18,8 +18,11 @@
 #include "js/CharacterEncoding.h"
 #include "js/Object.h"
 #include "js/Realm.h"
+#include "js/String.h"
 #include "domain/document_model/script_state.h"
 #include "resource_network/page_http.h"
+#include "js/Promise.h"
+#include "runtime/module_session.h"
 namespace ruyijs {
 namespace {
 enum Slot { Page, Script, Code, Filename, Document, Environment, Events, Generation, Loader, Url, Count };
@@ -51,6 +54,46 @@ bool PageLoad::Dynamic(Owners& owners,JS::HandleObject script,bool external) {
   const bool background=external&&DynamicPreloadUrl(owners,script,base,&url)&&
       (StartPreload(url,frame),PreloadPending(PreloadKey(owners.resources,url)));
   if(!background&&!Source(owners,script,base,&code,&filename,&defer,&failed))return false;
+  bool is_module=false;
+  {
+    JS::RootedValue type(cx);
+    if(!owners.document.ScriptAttribute(script,u"type",&type))return false;
+    if(type.isString()){
+      JS::RootedString typeString(cx,type.toString());
+      std::string t;
+      if(!ToUTF8(cx,typeString,&t))return false;
+      is_module=ruyijs::domain::document_model::script_module<char>(t);
+    }
+  }
+  if(is_module){
+    // Modules run through the realm's ModuleSession (Load + Evaluate), never
+    // through classic Execute: import/export would not even parse there.
+    BrowsingContext* context=Find(owners.document);
+    if(!context||!context->moduleSession)return owners.events.Fire(script,"error",false,false);
+    ModuleSession& session=*context->moduleSession;
+    JS::RootedObject module(cx);
+    std::string sourceText;
+    if(!ToUTF8(cx,code,&sourceText))return false;
+    const std::string module_url=url.empty()?base:url;
+    JS::RootedValue promise(cx);
+    bool loaded=false;
+    {
+      ModuleSession::Scope scope(session);
+      loaded=session.Load(module_url,sourceText,&module);
+      if(loaded)loaded=session.Evaluate(module,&promise);
+    }
+    if(!loaded)return owners.events.Fire(script,"error",false,false);
+    if(promise.isObject()){
+      JS::RootedObject promiseObject(cx,&promise.toObject());
+      const bool rejectedSync=JS::GetPromiseState(promiseObject)==JS::PromiseState::Rejected;
+      JS::RootedValue rejection(cx,JS::UndefinedValue());
+      if(rejectedSync)rejection.set(JS::GetPromiseResult(promiseObject));
+      JS::RootedObject ignored(cx);
+      if(!JS::AddPromiseReactionsIgnoringUnhandledRejection(cx,promiseObject,ignored,ignored))return false;
+      if(rejectedSync){JS_SetPendingException(cx,rejection);return owners.events.Fire(script,"error",false,false);}
+    }
+    return true;
+  }
   if(!external){uint32_t count=0;return !code||Execute(owners,script,code,filename,&count,1,{},"injectedScript");}
   JS::RootedObject data(cx,JS_NewObjectWithGivenProto(cx,&kTask,nullptr));
   JS::RootedString name(cx,JS_NewStringCopyN(cx,filename.data(),filename.size()));
@@ -114,7 +157,7 @@ bool PageLoad::DeliverDynamic(JSContext* cx,unsigned argc,JS::Value* vp) {
     return loader.Execute(owners,script,code,filename,&count,2)&&events.Fire(script,"load",false,false);
   }
   JS::RootedValue value(cx,JS::GetReservedSlot(data,Code));
-  if(!value.isString())return events.Fire(script,"error",false,false);
+  if(!value.isString())return owners.events.Fire(script,"error",false,false);
   JS::RootedString code(cx,value.toString()),name(cx,JS::GetReservedSlot(data,Filename).toString());
   std::string filename;uint32_t count=0;
   return ToUTF8(cx,name,&filename)&&loader.Execute(owners,script,code,filename,&count,2)&&

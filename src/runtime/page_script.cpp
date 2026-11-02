@@ -17,19 +17,31 @@ namespace ruyijs {
 namespace { void NoCheckpoint(JSContext*) {} }
 namespace {
 bool ModuleType(const std::string& type) {
-  size_t first = 0, last = type.size();
-  auto space = [](unsigned char value) {
-    return value == '\t' || value == '\n' || value == '\f' || value == '\r' || value == ' ';
+  // Cloudflare Rocket Loader rewrites types to "<hex digest>-<essence>"; the
+  // digest length is not fixed, so a leading hex run followed by '-' is
+  // stripped. Only accepted when the remainder is the module essence.
+  std::string value = type;
+  size_t hex = 0;
+  while (hex < value.size()) {
+    const auto c = static_cast<unsigned char>(value[hex]);
+    const bool ok = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+    if (!ok) break;
+    ++hex;
+  }
+  if (hex >= 4 && hex < value.size() && value[hex] == '-') value = value.substr(hex + 1);
+  size_t first = 0, last = value.size();
+  auto space = [](unsigned char v) {
+    return v == '\t' || v == '\n' || v == '\f' || v == '\r' || v == ' ';
   };
-  while (first < last && space(static_cast<unsigned char>(type[first]))) ++first;
-  while (last > first && space(static_cast<unsigned char>(type[last - 1]))) --last;
+  while (first < last && space(static_cast<unsigned char>(value[first]))) ++first;
+  while (last > first && space(static_cast<unsigned char>(value[last - 1]))) --last;
   return last - first == 6 &&
-      std::tolower(static_cast<unsigned char>(type[first])) == 'm' &&
-      std::tolower(static_cast<unsigned char>(type[first + 1])) == 'o' &&
-      std::tolower(static_cast<unsigned char>(type[first + 2])) == 'd' &&
-      std::tolower(static_cast<unsigned char>(type[first + 3])) == 'u' &&
-      std::tolower(static_cast<unsigned char>(type[first + 4])) == 'l' &&
-      std::tolower(static_cast<unsigned char>(type[first + 5])) == 'e';
+      std::tolower(static_cast<unsigned char>(value[first])) == 'm' &&
+      std::tolower(static_cast<unsigned char>(value[first + 1])) == 'o' &&
+      std::tolower(static_cast<unsigned char>(value[first + 2])) == 'd' &&
+      std::tolower(static_cast<unsigned char>(value[first + 3])) == 'u' &&
+      std::tolower(static_cast<unsigned char>(value[first + 4])) == 'l' &&
+      std::tolower(static_cast<unsigned char>(value[first + 5])) == 'e';
 }
 }
 // One fetched classic script body (ScriptLoadHandler::TrySetDecoder): the BOM's
@@ -111,9 +123,18 @@ bool PageLoad::Source(Owners& owners, JS::HandleObject script, const std::string
   web_security::Realm* security = context ? context->security.get() : nullptr;
   const bool parser_inserted = load_error == nullptr;
   if (src.isNull()) {
-    // This slice handles parser-inserted external modules only. Inline module
-    // evaluation and dynamic module preparation remain outside this owner pass.
-    if (is_module) return true;
+    // Inline modules run through the module owner too: hand the source back
+    // with the document URL as its specifier (the module map keys inline
+    // modules by their base URL) and defer them into the module pass.
+    if (is_module) {
+      JS::RootedValue inline_source(cx);
+      if (!owners.document.ScriptText(script, &inline_source)) return false;
+      if (!inline_source.isString()) return true;
+      code.set(inline_source.toString());
+      if (defer) *defer = true;
+      if (filename) *filename = base;
+      return true;
+    }
     JS::RootedValue inline_source(cx);
     if (!owners.document.ScriptText(script, &inline_source)) return false;
     *filename = base;
