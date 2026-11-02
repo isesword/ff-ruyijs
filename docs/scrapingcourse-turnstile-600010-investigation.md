@@ -667,3 +667,42 @@ RL 对 inline 脚本正常执行，但**外链 module script 的加载**依赖 R
 或者让引擎在解析时直接识别 RL 标记类型并原生加载（跳过 RL 中转）。
 后者更稳健——推荐在 `PrepareScript` 的 `rocket_loader_essence` 剥离后，
 将 RL 标记的 module 走 `ModuleSession` 管线（src 由引擎 fetch）。
+
+
+### §25 突破：ES module 管线全通，IPPure 解锁为客观评分器（2026-11-03）
+
+**引擎侧（分支 `mac-api-surface-parity`，e32f5c2）**
+
+- 动态插入 module script 四条路径全绿：inline / external（ModuleSession 按
+  Source 报告的解析 URL 入 module map）/ RL 变体（同 URL 去重）/ 404 error
+  事件；parser src + 内联 + 动态 import 回归无损。
+- 根因备忘：`Dynamic()` 此前调 `Source` 不带 module 出参 → `Source` 对
+  module 早退（设计如此，parser 路径单独路由）→ code 恒 null。修复 = 传
+  module 出参 + `!code && failed` 时对元素 fire error + external 用
+  filename 作 module map key（inline 用文档 URL，同 Firefox）。
+
+**IPPure（ippure.com/cloudflare）实测（mac 引擎 + DC 代理出口 209.126.8.142）**
+
+| 项 | 结果 |
+|---|---|
+| VitePress/Vue 模块挂载 | ✓（RL 变体 module 原生加载，§24 的推荐路径已落地） |
+| Cloudflare 风险指数 | ✓ 77-89 / 100（多次）——iframe→postMessage→HMAC/AES 签名网关全链路 |
+| reCAPTCHA v3 | ✓ 0.3-0.7 / 1.0（Google 客观分，轮次波动）|
+| Turnstile 渲染 + 执行 | ✓ render ×2（closed shadow root 内 iframe，rch 200，fo POST 200）|
+| Turnstile verdict | ✗ NonInteractive error-callback = **600010**（put_resource 替身 api.js 抓到），Managed 停在等待激活 |
+
+600010 与 ScrapingCourse §22 的 DECISIVE CONTROL 结论一致：同一出口真
+FF159 headed 通过，差距在本引擎挑战面（已知派生面剩余：audio 表生成
+ULP、Skia stroke AA），不在 IP/网络。
+
+**排查中排除项**（全部本地复现验证正常，勿再怀疑）：
+
+- 跨域子环境 GET/POST（同源经 necko helper，含 parse 期）
+- MessageChannel 跨 frame transfer + 双向 port 投递
+- postMessage origin 盖章、event.source 身份
+- meta CSP nonce 执行、`worker-src blob:`、closed shadow root 内 iframe
+  加载（含 detached 宿主 + turnstile 精确属性序列）
+
+**工具沉淀**：`Context.put_resource` 可整体替身第三方 JS（本次给
+challenges.cloudflare.com/turnstile/v0/api.js 注仪表抓到 600010），是
+后续挑战面调试的标准手法。example：`python -m ruyijs.examples ippure`。

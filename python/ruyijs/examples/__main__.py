@@ -10,6 +10,7 @@ EXAMPLES = {
     "creepjs": ("creepjs/creepjs.py", "CreepJS"),
     "truepeople": ("truepeople/truepeople.py", "TruePeopleSearch Cloudflare 托管质询"),
     "scrapingcourse": ("scrapingcourse/scrapingcourse.py", "ScrapingCourse Cloudflare Turnstile 登录"),
+    "ippure": ("ippure/ippure.py", "IPPure Cloudflare 环境评分（风险指数 + Turnstile + reCAPTCHA）"),
 }
 
 
