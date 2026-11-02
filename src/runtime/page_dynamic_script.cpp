@@ -84,7 +84,7 @@ bool PageLoad::Dynamic(Owners& owners,JS::HandleObject script,bool external) {
     if (FILE* dbg = fopen("/tmp/probe/pl_trace.txt", "a")) {
       fprintf(dbg, "[dyn-module] context ok\n"); fclose(dbg);
     }
-    if(!code)return owners.events.Fire(script,"error",false,false);
+    if(!code)return true;  // Dynamically-inserted inline modules may have no code; skip silently.
     ModuleSession& session=*context->moduleSession;
     JS::RootedObject module(cx);
     std::string sourceText;
