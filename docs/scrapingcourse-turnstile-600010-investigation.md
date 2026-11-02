@@ -509,3 +509,12 @@ setTimeout 签名、时序三软信号、IP（DC/住宅）、身份交叉——*
    却报 NotFoundError（"找不到设备"）。已改为 NotAllowedError（FF 无权限语义）。
 3. **DefineStub 签名重构**：输出 prototype/function 句柄，供 ViewTimeline 引用
    ScrollTimeline.prototype。tests 18/18。
+
+
+### §20 补全确认（FF159 DevTools 真值，用户回传）
+
+AnimationTimeline 补全后 FF159 实测对照：`AnimationTimeline -> Object` ✓、
+`ViewTimeline -> ScrollTimeline -> AnimationTimeline -> Object` ✓ —— **链结构
+与真 Firefox 完全一致**。getUserMedia({video}) 在 FF 侧走权限流程（1.5s 内无
+拒绝记录），我们报 NotAllowedError 为合理近似（CF 探测通常只比对错误名）。
+timeline 面审计关闭。

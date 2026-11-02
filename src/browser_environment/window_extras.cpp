@@ -101,17 +101,22 @@ bool InstallWindowExtras(State& state) {
   static const JSPropertySpec scrollTimelineAccessors[] = {
     JS_PSG("source", Unavailable, JSPROP_ENUMERATE),
     JS_PSG("axis", Unavailable, JSPROP_ENUMERATE), JS_PS_END};
+  static const JSPropertySpec animationTimelineAccessors[] = {
+    JS_PSG("currentTime", Unavailable, JSPROP_ENUMERATE), JS_PS_END};
   JS::RootedObject scrollTimelinePrototype(cx), viewTimelinePrototype(cx),
-      unusedFunction(cx);
+      animationTimelinePrototype(cx), unusedFunction(cx);
   return DefineStub(cx, page, *state.helpers, "Serial", eventTargetPrototype,
                     serialMethods, serialAccessors, &scrollTimelinePrototype,
                     &unusedFunction) &&
          DefineStub(cx, page, *state.helpers, "SerialPort", eventTargetPrototype,
                     serialPortMethods, serialPortAccessors, &scrollTimelinePrototype,
                     &unusedFunction) &&
-         DefineStub(cx, page, *state.helpers, "ScrollTimeline", nullptr, nullptr,
-                    scrollTimelineAccessors, &scrollTimelinePrototype,
+         DefineStub(cx, page, *state.helpers, "AnimationTimeline", nullptr, nullptr,
+                    animationTimelineAccessors, &animationTimelinePrototype,
                     &unusedFunction) &&
+         DefineStub(cx, page, *state.helpers, "ScrollTimeline",
+                    animationTimelinePrototype, nullptr, scrollTimelineAccessors,
+                    &scrollTimelinePrototype, &unusedFunction) &&
          DefineStub(cx, page, *state.helpers, "ViewTimeline", scrollTimelinePrototype,
                     nullptr, viewTimelineAccessors, &viewTimelinePrototype,
                     &unusedFunction);
