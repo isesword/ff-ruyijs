@@ -580,3 +580,18 @@ tz/IP 矛盾（上海时间 + 美国 IP）是真实可探测的不一致。
 SpiderMonkey + 真 Necko + FF Skia——L2/L3/L4 天然同源，L5 已磨到 bit-exact，
 L1 已双极排除。**与文章方案对比表中"官方 API"之外的最强状态等价，且静态可
 对拍的检测点已 100% 覆盖**。残余仍在派生行为深处与 inner 私有实现。
+
+
+### §24 L6 落地：真人鼠标轨迹与点击偏移（2026-11-03）
+
+`InputControl.glide(target, duration_ms, offset)` + `click(glide=True, offset)`：
+- glide：smoothstep 弧线（弦长的 12% 控制点）+ 落点区抖动衰减，62 个
+  pointermove/mousemove 对、间隔 9.6ms±（帧节奏），movementX/Y = 相邻差值；
+- click：down/up/click 全落在轨迹终点（小数偏移坐标，不再是整数正中心），
+  落点前 40–90ms 瞄准停顿；
+- C++ `Click` 增加 offset_x/offset_y（RPC 字段，±2000 有限值），落点不再取整。
+
+实测事件流（mp 探针）：67 事件 / 62 move / 坐标 (126,77)→(252,167) 渐变弧线 /
+间隔 min 0 max 69 avg 9.6 / down=click 落点一致。tests 18/18。
+**Turnstile：仍 600010**（`result-humanized.json`）——L6 轨迹已真人化，verdict
+不变，行为层的增益需 CF 侧开启行为分析才可观测。

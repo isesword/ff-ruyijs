@@ -46,13 +46,15 @@ bool Mouse(JSContext* cx, JS::HandleObject target, const char* type, double x, d
   return init.Send(target, type, clock, allowed);
 }
 bool Click(JSContext* cx, BrowsingContext& active, JS::HandleObject target, double hold,
-           SchedulingControl& clock) {
+           double offset_x, double offset_y, SchedulingControl& clock) {
   if (!active.environment->InnerScreenOrigin(&gScreen.x, &gScreen.y)) return false;
   std::array<double, 4> rect{};
   bool present = false;
   if (!active.geometry->MeasureElement(target, &rect, &present, false)) JS_ClearPendingException(cx);
-  const double x = present ? std::round(rect[0] + rect[2] / 2) : 0;
-  const double y = present ? std::round(rect[1] + rect[3] / 2) : 0;
+  // A human click lands off-center with fractional coordinates; the exact
+  // offset comes from the caller's humanized pointer trajectory.
+  const double x = present ? rect[0] + rect[2] / 2 + offset_x : 0;
+  const double y = present ? rect[1] + rect[3] / 2 + offset_y : 0;
   JS::RootedObjectVector path(cx);
   if (!document_model::ElementPath(cx, target, &path)) return false;
   JS::RootedObject node(cx);
@@ -96,11 +98,23 @@ bool UserInputRequest(JSContext* cx, TopLevel& top, JS::HandleObject request,
   std::string action, text, key, expression;
   double hold = 80, interval = 60;
   bool hasTarget = false;
-  if (!resource_wire::Fields(cx, request, {"id", "op", "action", "target", "text", "key", "hold_ms", "interval_ms"}) ||
+  if (!resource_wire::Fields(cx, request, {"id", "op", "action", "target", "text", "key", "hold_ms",
+                                           "interval_ms", "offset_x", "offset_y"}) ||
       !resource_wire::Property(cx, request, "action", &action, 16, resource_wire::TextKind::ASCII) ||
       !JS_HasProperty(cx, request, "target", &hasTarget) ||
       (hasTarget && !resource_wire::Property(cx, request, "target", &expression, 65536)) ||
       !Delay(cx, request, "hold_ms", &hold) || !Delay(cx, request, "interval_ms", &interval)) return false;
+  double offset_x = 0, offset_y = 0;
+  for (const char* axis : {"offset_x", "offset_y"}) {
+    JS::RootedValue axis_value(cx);
+    if (!JS_GetProperty(cx, request, axis, &axis_value)) return false;
+    if (axis_value.isNumber()) {
+      double v = axis_value.toNumber();
+      if (!std::isfinite(v) || v < -2000 || v > 2000)
+        return resource_wire::Error(cx, "Input offset must be a finite number within +/-2000", true);
+      (axis[7] == 'x' ? offset_x : offset_y) = v;
+    }
+  }
   BrowsingContext& active = top.Active();
   JSAutoRealm realm(cx, active.page);
   JS::RootedObject target(cx);
@@ -117,7 +131,7 @@ bool UserInputRequest(JSContext* cx, TopLevel& top, JS::HandleObject request,
   scheduling.Freeze();
   if (action == "click") {
     if (!target) return resource_wire::Error(cx, "click needs a target");
-    if (!Click(cx, active, target, hold, scheduling)) return false;
+    if (!Click(cx, active, target, hold, offset_x, offset_y, scheduling)) return false;
   } else if (action == "type" || action == "press") {
     if (target && !document_model::FocusElement(cx, target)) return false;
     JS::RootedObject focused(cx);
