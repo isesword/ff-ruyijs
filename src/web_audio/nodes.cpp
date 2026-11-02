@@ -1,6 +1,7 @@
 #include "web_audio/node_fields.h"
 
 #include "js/Array.h"
+#include "js/Conversions.h"
 #include "js/Object.h"
 #include "js/String.h"
 #include "runtime/native_constructor_trace.h"
@@ -154,7 +155,10 @@ bool MakeNode(JSContext* cx, unsigned argc, JS::Value* vp) {
   if (!InitNodeChannels(*state, node, kind) || !AttachParams(*state, node, kind))
     return false;
   if (!InitNodeFields(*state, node, JS::UndefinedHandleValue)) return false;
-  if (kind == kOscillatorNode && !RegisterSourceNode(*state, node)) return false;
+  // Sources the offline render walks the graph from: the oscillator, the
+  // buffer source and the constant source register when constructed.
+  if ((kind == kOscillatorNode || kind == kBufferSourceNode || index == 13) &&
+      !RegisterSourceNode(*state, node)) return false;
   args.rval().setObject(*node);
   return true;
 }
@@ -180,6 +184,35 @@ bool NodeMethod(JSContext* cx, unsigned argc, JS::Value* vp) {
   if(JS::GetReservedSlot(self,kNodeKindSlot).toInt32()!=kOscillatorNode && def!=13 && def!=14)
     return WebKit::Fail(cx,"AudioScheduledSourceNode requires a source receiver");
   args.rval().setUndefined();
+  return true;
+}
+
+// start(when, offset, duration): the offline renderer reads the schedule from
+// these slots; the duration form is honored through the stop time.
+bool NodeStart(JSContext* cx, unsigned argc, JS::Value* vp) {
+  auto args = JS::CallArgsFromVp(argc, vp);
+  JS::RootedObject self(cx);
+  if (!detail::NodeReceiver(cx, args, WebKit::Slot(args), &self)) return false;
+  args.rval().setUndefined();
+  double when = 0;
+  if (argc && !JS::ToNumber(cx, args[0], &when)) return false;
+  double offset = 0;
+  if (argc > 1 && !JS::ToNumber(cx, args[1], &offset)) return false;
+  if (when < 0) when = 0;
+  if (offset < 0) offset = 0;
+  JS::SetReservedSlot(self, kNodeStartSlot, JS::DoubleValue(when));
+  JS::SetReservedSlot(self, kNodeOffsetSlot, JS::DoubleValue(offset));
+  return true;
+}
+
+bool NodeStop(JSContext* cx, unsigned argc, JS::Value* vp) {
+  auto args = JS::CallArgsFromVp(argc, vp);
+  JS::RootedObject self(cx);
+  if (!detail::NodeReceiver(cx, args, WebKit::Slot(args), &self)) return false;
+  args.rval().setUndefined();
+  double when = 0;
+  if (argc && !JS::ToNumber(cx, args[0], &when)) return false;
+  JS::SetReservedSlot(self, kNodeStopSlot, JS::DoubleValue(when < 0 ? 0 : when));
   return true;
 }
 

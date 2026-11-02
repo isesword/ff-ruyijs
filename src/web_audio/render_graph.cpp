@@ -1,5 +1,7 @@
 #include "web_audio/render_graph.h"
 
+#include "web_audio/node_fields.h"
+
 #include <algorithm>
 
 #include "js/Array.h"
@@ -39,6 +41,16 @@ size_t IndexOf(const std::vector<RenderNode>& nodes, JSObject* node) {
 uint32_t ChannelCount(JSContext* cx, JS::HandleObject node, int32_t kind,
                       uint32_t inputs, uint32_t destination_channels) {
   if (kind == kOscillatorNode) return 1;  // a source always publishes one channel
+  if (kind == kBufferSourceNode) {
+    // A buffer source publishes its buffer's channel count.
+    JS::RootedValue bufferValue(cx);
+    if (ReadField(cx, node, "buffer", &bufferValue) && bufferValue.isObject()) {
+      const int32_t count =
+          JS::GetReservedSlot(&bufferValue.toObject(), kBufferCountSlot).toInt32();
+      if (count >= 1) return uint32_t(std::min(count, 32));
+    }
+    return 1;
+  }
   if (kind == kDestinationNode) return destination_channels;
   const uint32_t count =
       uint32_t(JS::GetReservedSlot(node, kNodeChannelCountSlot).toInt32());

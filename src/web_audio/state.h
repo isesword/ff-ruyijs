@@ -22,6 +22,7 @@ enum NodeKind : int32_t {
   kCompressorNode = 2,
   kGainNode = 3,
   kDestinationNode = 4,
+  kBufferSourceNode = 5,
 };
 
 inline constexpr int32_t kNodeKindSlot = 0;
@@ -34,7 +35,10 @@ inline constexpr int32_t kNodeDefIndexSlot = 9;     // kNodeDefs row, or -1
 inline constexpr int32_t kNodeChannelCountSlot = 10;
 inline constexpr int32_t kNodeChannelModeSlot = 11;     // ChannelCountMode string
 inline constexpr int32_t kNodeInterpretationSlot = 12;  // ChannelInterpretation string
-inline constexpr int32_t kNodeSlotCount = 15;
+inline constexpr int32_t kNodeStartSlot = 15;  // AudioScheduledSourceNode.start(when)
+inline constexpr int32_t kNodeOffsetSlot = 16; // start(when, offset)
+inline constexpr int32_t kNodeStopSlot = 17;   // stop(when)
+inline constexpr int32_t kNodeSlotCount = 18;
 
 // The AudioNode attribute accessors share one native; the slot names the
 // member. They are read-only except channelCount/Mode/Interpretation.
@@ -118,7 +122,7 @@ inline constexpr NodeDef kNodeDefs[] = {
     {"StereoPannerNode", false, kGenericNode, 1, 1},
     {"WaveShaperNode", false, kGenericNode, 1, 1},
     {"ConstantSourceNode", true, kGenericNode, 0, 1},
-    {"AudioBufferSourceNode", true, kGenericNode, 0, 1},
+    {"AudioBufferSourceNode", true, kBufferSourceNode, 0, 1},
     {"AudioWorkletNode", false, kGenericNode, 1, 1},
     {"MediaElementAudioSourceNode", false, kGenericNode, 0, 1},
     {"MediaStreamAudioSourceNode", false, kGenericNode, 0, 1},
@@ -165,6 +169,8 @@ bool NodeCtor(JSContext*, unsigned, JS::Value*);
 bool NodeConnect(JSContext*, unsigned, JS::Value*);
 bool NodeDisconnect(JSContext*, unsigned, JS::Value*);
 bool NodeMethod(JSContext*, unsigned, JS::Value*);
+bool NodeStart(JSContext*, unsigned, JS::Value*);
+bool NodeStop(JSContext*, unsigned, JS::Value*);
 bool OscillatorCtor(JSContext*, unsigned, JS::Value*);
 bool ChildGet(JSContext*, unsigned, JS::Value*);
 // AudioNode attribute surface (numberOfInputs/Outputs, context, channel state).

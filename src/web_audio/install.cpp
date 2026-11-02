@@ -108,11 +108,11 @@ bool Realm::Install() {
       !kit.Method(s.context, "AudioContext", "getOutputTimestamp", ContextTimestamp, 0,
                   0))
     return false;
-  for (const char* name : {"start", "stop"}) {
-    if (!kit.Method(s.scheduled, "AudioScheduledSourceNode", name, NodeMethod, 0,
-                    kGenericNode))
-      return false;
-  }
+  if (!kit.Method(s.scheduled, "AudioScheduledSourceNode", "start", NodeStart, 0,
+                  kGenericNode) ||
+      !kit.Method(s.scheduled, "AudioScheduledSourceNode", "stop", NodeStop, 0,
+                  kGenericNode))
+    return false;
   if (!kit.Accessor(s.oscillator, "OscillatorNode", "frequency", ChildGet, nullptr,
                     kOscillatorNode * 8) ||
       !kit.Accessor(s.oscillator, "OscillatorNode", "detune", ChildGet, nullptr,

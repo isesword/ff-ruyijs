@@ -25,7 +25,8 @@ bool InstallNodeSurface(State& s) {
      !kit.Accessor(s.scheduled,"AudioScheduledSourceNode","onended",AudioEventGet,
                    AudioEventSet,kNodeEndedSlot)) return false;
   WebFace source(s.cx);source.prototype=s.nodePrototypes.get()[14];
-  if(!kit.Method(source,"AudioBufferSourceNode","start",NodeMethod,0,kGenericNode))
+  if(!kit.Method(source,"AudioBufferSourceNode","start",NodeStart,0,kGenericNode) ||
+     !kit.Method(source,"AudioBufferSourceNode","stop",NodeStop,0,kGenericNode))
     return false;
   // Required constructor arity comes from Firefox's generated bindings.
   for(int32_t i=0;i<kNodeDefCount;++i) {

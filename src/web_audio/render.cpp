@@ -1,4 +1,6 @@
 #include "web_audio/internal.h"
+#include "js/Conversions.h"
+#include "web_audio/node_fields.h"
 
 #include <algorithm>
 #include <cmath>
@@ -75,9 +77,94 @@ void MixInto(const float* source, uint32_t source_channels, float* destination,
       destination[i] += source[channel * kRenderQuantum + i] * scale;
 }
 
+// The AudioParam slots the buffer source reads: playbackRate's field holds
+// either the AudioParam object or a plain number.
+double PlaybackRateOf(State& state, JSContext* cx, JS::HandleObject node) {
+  JS::RootedValue value(cx);
+  if (!ReadField(cx, node, "playbackRate", &value)) return 1.0;
+  if (value.isNumber()) return value.toNumber();
+  if (value.isObject()) {
+    // The field stores the AudioParam object: slot 0 is its model id, the
+    // live value lives behind the model, exactly as ParamValue reads it.
+    JS::Value id = JS::GetReservedSlot(&value.toObject(), 0);
+    double live = 1.0;
+    if (id.isInt32() && id.toInt32() > 0 &&
+        state.model.param_value(uint32_t(id.toInt32()), &live))
+      return live;
+    return 1.0;
+  }
+  return 1.0;
+}
+
 // Runs one render quantum of |node|'s own algorithm.
-bool ProcessNode(State& state, RenderNode& node) {
+bool ProcessNode(State& state, RenderNode& node, int32_t quantum_offset,
+                 double sample_rate) {
   JSContext* cx = state.cx;
+  if (node.kind == kBufferSourceNode) {
+    JS::RootedObject object(cx, node.node);
+    JS::RootedValue bufferValue(cx);
+    if (!ReadField(cx, object, "buffer", &bufferValue)) return false;
+    if (!bufferValue.isObject()) {  // no buffer yet: silence
+      std::fill(node.output.begin(), node.output.end(), 0.0f);
+      return true;
+    }
+    JS::RootedObject buffer(cx, &bufferValue.toObject());
+    const int32_t length = JS::GetReservedSlot(buffer, kBufferLengthSlot).toInt32();
+    const int32_t channels = JS::GetReservedSlot(buffer, kBufferCountSlot).toInt32();
+    const double rate = JS::GetReservedSlot(buffer, kBufferRateSlot).toDouble();
+    JS::Value data = JS::GetReservedSlot(buffer, kBufferDataSlot);
+    if (length <= 0 || channels <= 0 || !data.isObject()) {
+      std::fill(node.output.begin(), node.output.end(), 0.0f);
+      return true;
+    }
+    JS::RootedObject schedule(cx, &data.toObject());
+    JS::Value start = JS::GetReservedSlot(object, kNodeStartSlot);
+    const double when = start.isNumber() ? start.toNumber() : 0.0;
+    JS::Value offsetValue = JS::GetReservedSlot(object, kNodeOffsetSlot);
+    const double offset_seconds = offsetValue.isNumber() ? offsetValue.toNumber() : 0.0;
+    JS::Value stop = JS::GetReservedSlot(object, kNodeStopSlot);
+    const double stop_when = stop.isNumber() ? stop.toNumber() : 1.0e9;
+    JS::RootedValue loopValue(cx);
+    bool loops = false;
+    double loop_start = 0, loop_end = length;
+    if (ReadField(cx, object, "loop", &loopValue)) loops = JS::ToBoolean(loopValue);
+    if (ReadField(cx, object, "loopStart", &loopValue) && loopValue.isNumber())
+      loop_start = std::max(0.0, loopValue.toNumber()) * rate;
+    if (ReadField(cx, object, "loopEnd", &loopValue) && loopValue.isNumber() &&
+        loopValue.toNumber() > 0)
+      loop_end = std::min(loopValue.toNumber() * rate, double(length));
+    const double playback = PlaybackRateOf(state, cx, object);
+    const double ratio = (rate > 0 && sample_rate > 0) ? rate / sample_rate : 1.0;
+    const double begin = when * sample_rate;
+    const double end = stop_when * sample_rate;
+    const double head = offset_seconds * rate;
+    JS::RootedValue channelValue(cx);
+    for (uint32_t channel = 0; channel < node.channels; ++channel) {
+      const uint32_t source = std::min(channel, uint32_t(channels) - 1);
+      float* out = &node.output[size_t(channel) * kRenderQuantum];
+      if (!data.isObject() || !JS_GetElement(cx, schedule, source, &channelValue) ||
+          !channelValue.isObject()) {
+        for (int32_t i = 0; i < kRenderQuantum; ++i) out[i] = 0.0f;
+        continue;
+      }
+      JS::RootedObject samples(cx, &channelValue.toObject());
+      JS::RootedValue sample(cx);
+      for (int32_t i = 0; i < kRenderQuantum; ++i) {
+        const double timeline = double(quantum_offset + i);
+        if (timeline < begin || timeline >= end) { out[i] = 0.0f; continue; }
+        double position = head + (timeline - begin) * playback * ratio;
+        if (loops && loop_end > loop_start &&
+            position >= loop_end)
+          position = loop_start + std::fmod(position - loop_start,
+                                            loop_end - loop_start);
+        const int32_t index = int32_t(position);
+        if (index < 0 || index >= length) { out[i] = 0.0f; continue; }
+        if (!JS_GetElement(cx, samples, uint32_t(index), &sample)) return false;
+        out[i] = float(sample.isNumber() ? sample.toNumber() : 0.0);
+      }
+    }
+    return true;
+  }
   if (node.kind == kOscillatorNode) {
     node.voice.Compute(node.output.data(), kRenderQuantum);
     return true;
@@ -146,7 +233,7 @@ bool RenderPlaceholder(State& state, JS::HandleObject context,
       for (size_t other : node.inputs)
         MixInto(nodes[other].output.data(), nodes[other].channels, node.input.data(),
                 node.channels);
-      if (!ProcessNode(state, node)) return false;
+      if (!ProcessNode(state, node, offset, rate)) return false;
     }
     // The destination's output is the rendered quantum. Gecko clips at the
     // device, so an offline render keeps values outside [-1, 1].
