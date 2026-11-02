@@ -84,24 +84,22 @@ bool PageLoad::Dynamic(Owners& owners,JS::HandleObject script,bool external) {
     if (FILE* dbg = fopen("/tmp/probe/pl_trace.txt", "a")) {
       fprintf(dbg, "[dyn-module] context ok\n"); fclose(dbg);
     }
+    if(!code)return owners.events.Fire(script,"error",false,false);
     ModuleSession& session=*context->moduleSession;
     JS::RootedObject module(cx);
     std::string sourceText;
     if(!ToUTF8(cx,code,&sourceText))return false;
-    if (FILE* dbg = fopen("/tmp/probe/pl_trace.txt", "a")) {
-      fprintf(dbg, "[dyn-module] source ok, url=%s\n", url.c_str()); fclose(dbg);
-    }
     const std::string module_url=url.empty()?base:url;
     JS::RootedValue promise(cx);
     bool loaded=false;
     {
       ModuleSession::Scope scope(session);
       if (FILE* dbg = fopen("/tmp/probe/pl_trace.txt", "a")) {
-        fprintf(dbg, "[dyn-module] before Load\n"); fclose(dbg);
+        fprintf(dbg, "[dyn-module] before Load url=%s\\n", module_url.c_str()); fclose(dbg);
       }
       loaded=session.Load(module_url,sourceText,&module);
       if (FILE* dbg = fopen("/tmp/probe/pl_trace.txt", "a")) {
-        fprintf(dbg, "[dyn-module] after Load loaded=%d\n", loaded); fclose(dbg);
+        fprintf(dbg, "[dyn-module] after Load loaded=%d\\n", loaded); fclose(dbg);
       }
       if(loaded)loaded=session.Evaluate(module,&promise);
     }
