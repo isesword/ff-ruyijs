@@ -7,6 +7,7 @@
 #include "runtime/web_kit.h"
 #include "runtime/page_helpers.h"
 #include "js/PropertyAndElement.h"
+#include "js/Realm.h"
 
 namespace ruyijs::browser_environment {
 namespace {
@@ -25,9 +26,17 @@ JSObject* Method(JSContext* cx, JSNative native, const char* name, unsigned leng
 // order: length, name, prototype lead, then the prototype members.
 bool DefineStub(JSContext* cx, JS::HandleObject page, PageHelpers& helpers,
                 const char* name, JS::HandleObject parent_prototype,
-                const JSFunctionSpec* methods, const JSPropertySpec* accessors) {
-  JS::RootedObject prototype(cx, JS_NewObjectWithGivenProto(cx, &kPlainClass,
-                                                            parent_prototype));
+                const JSFunctionSpec* methods, const JSPropertySpec* accessors,
+                JS::MutableHandleObject prototype, JS::MutableHandleObject function) {
+  // A null parent chains to %Object.prototype% (JS_InitClass's nullptr
+  // semantics); JS_NewObjectWithGivenProto with a null handle would leave the
+  // prototype with a null [[Prototype]] instead.
+  JS::RootedObject proto_parent(cx, parent_prototype);
+  if (!proto_parent) {
+    proto_parent = JS::GetRealmObjectPrototype(cx);
+    if (!proto_parent) return false;
+  }
+  prototype.set(JS_NewObjectWithGivenProto(cx, &kPlainClass, proto_parent));
   JS::RootedFunction created(cx, JS_NewFunction(cx, Unavailable, 0, JSFUN_CONSTRUCTOR, name));
   JS::RootedObject constructor(cx, created ? JS_GetFunctionObject(created) : nullptr);
   if (!prototype || !constructor || !LeadFunctionKeys(cx, constructor) ||
@@ -39,13 +48,14 @@ bool DefineStub(JSContext* cx, JS::HandleObject page, PageHelpers& helpers,
       !JS_DefineProperty(cx, page, name, constructor, 0) ||
       !helpers.Object(name, prototype) || !helpers.Constructor(name, constructor))
     return false;
+  function.set(constructor);
   JS::RootedValue member(cx);
-  JS::RootedObject function(cx);
+  JS::RootedObject memberFn(cx);
   for (const JSFunctionSpec* method = methods; method && method->name.string(); ++method) {
     if (!JS_GetProperty(cx, prototype, method->name.string(), &member) || !member.isObject())
       return false;
-    function = &member.toObject();
-    if (!helpers.Member(function, name, method->name.string(), "call")) return false;
+    memberFn = &member.toObject();
+    if (!helpers.Member(memberFn, name, method->name.string(), "call")) return false;
   }
   return true;
 }
@@ -91,13 +101,19 @@ bool InstallWindowExtras(State& state) {
   static const JSPropertySpec scrollTimelineAccessors[] = {
     JS_PSG("source", Unavailable, JSPROP_ENUMERATE),
     JS_PSG("axis", Unavailable, JSPROP_ENUMERATE), JS_PS_END};
+  JS::RootedObject scrollTimelinePrototype(cx), viewTimelinePrototype(cx),
+      unusedFunction(cx);
   return DefineStub(cx, page, *state.helpers, "Serial", eventTargetPrototype,
-                    serialMethods, serialAccessors) &&
+                    serialMethods, serialAccessors, &scrollTimelinePrototype,
+                    &unusedFunction) &&
          DefineStub(cx, page, *state.helpers, "SerialPort", eventTargetPrototype,
-                    serialPortMethods, serialPortAccessors) &&
-         DefineStub(cx, page, *state.helpers, "ViewTimeline", nullptr, nullptr,
-                    viewTimelineAccessors) &&
+                    serialPortMethods, serialPortAccessors, &scrollTimelinePrototype,
+                    &unusedFunction) &&
          DefineStub(cx, page, *state.helpers, "ScrollTimeline", nullptr, nullptr,
-                    scrollTimelineAccessors);
-}
+                    scrollTimelineAccessors, &scrollTimelinePrototype,
+                    &unusedFunction) &&
+         DefineStub(cx, page, *state.helpers, "ViewTimeline", scrollTimelinePrototype,
+                    nullptr, viewTimelineAccessors, &viewTimelinePrototype,
+                    &unusedFunction);
 }  // namespace ruyijs::browser_environment
+}

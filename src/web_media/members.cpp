@@ -66,8 +66,8 @@ bool MediaMethod(JSContext* cx,unsigned argc,JS::Value* vp) {
   }
   JS::RootedValue constructor(cx),reason(cx);JS::RootedObject error(cx);
   if (!JS_GetProperty(cx,s.kit.page,requested?"DOMException":"TypeError",&constructor)) return false;
-  JS::RootedString message(cx,JS_NewStringCopyZ(cx,requested?"No media devices are attached":"Audio or video must be requested"));
-  JS::RootedString name(cx,JS_NewStringCopyZ(cx,"NotFoundError"));
+  JS::RootedString message(cx,JS_NewStringCopyZ(cx,requested?"Camera or microphone access was denied by the user":"Audio or video must be requested"));
+  JS::RootedString name(cx,JS_NewStringCopyZ(cx,requested?"NotAllowedError":"NotFoundError"));
   JS::RootedValueArray<2> values(cx);
   if (!message || !name) return false;
   values[0].setString(message);values[1].setString(name);

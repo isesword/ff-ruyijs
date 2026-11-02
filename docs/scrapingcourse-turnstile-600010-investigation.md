@@ -496,3 +496,16 @@ setTimeout 签名、时序三软信号、IP（DC/住宅）、身份交叉——*
 残余差距锁定在：不可静态对拍的派生行为（光栅化非确定性、GC/JIT 节奏、事件循环
 微观调度）、或 inner 分支的私有环境实现。后续突破依赖 inner 的信息（只有作者
 持有）或 CF 探测的持续逆向。
+
+
+### §20 自查修复（同日）：代码审查发现的三处问题
+
+1. **window_extras 的 ViewTimeline/ScrollTimeline 原型链断在 null**——DefineStub
+   对 nullptr parent 直接给了 null [[Prototype]]。补 `JS::GetRealmObjectPrototype`
+   回退（与 InitClassOrdered 同款），并把 ViewTimeline 链到 ScrollTimeline。
+   实测链：ViewTimeline -> ScrollTimeline -> Object（缺 AnimationTimeline 层，
+   FF 有——低优先遗留）。
+2. **getUserMedia({video}) 错误类自相矛盾**：设备列表补了摄像头之后，无权限请求
+   却报 NotFoundError（"找不到设备"）。已改为 NotAllowedError（FF 无权限语义）。
+3. **DefineStub 签名重构**：输出 prototype/function 句柄，供 ViewTimeline 引用
+   ScrollTimeline.prototype。tests 18/18。
