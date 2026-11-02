@@ -4,6 +4,7 @@
 // isUserVerifyingPlatformAuthenticatorAvailable, conditional mediation
 // available, and the getClientCapabilities record below.
 #include "web_credentials/internal.h"
+#include "js/Stack.h"
 #include "jsapi.h"
 #include "js/CallAndConstruct.h"
 #include "js/ColumnNumber.h"
@@ -11,6 +12,17 @@
 #include "js/Promise.h"
 #include "js/PropertyAndElement.h"
 #include "js/ValueArray.h"
+
+// Capture the scripted caller's stack for page-visible error objects: Firefox
+// error objects always carry the caller's frames (报错栈检测点).
+static bool CallerStack(JSContext* cx, JS::MutableHandleObject stack) {
+  if (!JS::CaptureCurrentStack(cx, stack, JS::StackCapture(JS::MaxFrames(12)))) {
+    JS_ClearPendingException(cx);
+    stack.set(nullptr);
+  }
+  return true;
+}
+
 
 namespace ruyijs::web_credentials {
 namespace {
@@ -40,9 +52,11 @@ bool Resolved(JSContext* cx, const JS::CallArgs& args, JS::HandleValue value) {
 bool ThrowType(JSContext* cx, const std::u16string& message) {
   JS::RootedString text(cx, JS_NewUCStringCopyN(cx, message.data(), message.size()));
   JS::RootedString file(cx, JS_NewStringCopyZ(cx, "ruyijs:web"));
+  JS::RootedObject stack(cx);
+  CallerStack(cx, &stack);
   JS::Rooted<mozilla::Maybe<JS::Value>> cause(cx, mozilla::Nothing());
   JS::RootedValue error(cx);
-  if (!text || !file || !JS::CreateError(cx, JSEXN_TYPEERR, nullptr, file, 1,
+  if (!text || !file || !JS::CreateError(cx, JSEXN_TYPEERR, stack, file, 1,
                                          JS::ColumnNumberOneOrigin(), nullptr, text, cause,
                                          &error)) return false;
   JS_SetPendingException(cx, error);

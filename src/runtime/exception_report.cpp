@@ -5,6 +5,7 @@
 #include "js/Conversions.h"
 #include "js/ErrorReport.h"
 #include "js/Exception.h"
+#include "js/Stack.h"
 #include "js/PropertyAndElement.h"
 #include "js/SavedFrameAPI.h"
 #include "js/String.h"
@@ -141,10 +142,23 @@ ExceptionReport DescribeException(JSContext* cx, JS::HandleValue value,
 
 bool CreateExceptionValue(JSContext* cx, const ExceptionReport& report,
                           JS::MutableHandleValue value) {
+  // Firefox error objects always carry the page's call stack; embedding-side
+  // throws (DOM validation, request failures) report an empty stack, so
+  // capture the scripted caller here when the report has none.
+  std::string stackText = report.stack;
+  if (stackText.empty()) {
+    JS::RootedObject captured(cx);
+    if (JS::CaptureCurrentStack(cx, &captured,
+                                JS::StackCapture(JS::MaxFrames(12)))) {
+      if (captured) stackText = SavedStack(cx, captured);
+    } else {
+      JS_ClearPendingException(cx);
+    }
+  }
   JS::RootedObject object(cx, JS_NewPlainObject(cx));
   if (!object) return false;
   const char* keys[] = {"name", "message", "stack"};
-  const std::string* fields[] = {&report.name, &report.message, &report.stack};
+  const std::string* fields[] = {&report.name, &report.message, &stackText};
   for (size_t index = 0; index < 3; ++index) {
     const std::u16string* units = index == 1 && report.hasMessageUnits ? &report.messageUnits :
         index == 0 && report.hasNameUnits ? &report.nameUnits : nullptr;

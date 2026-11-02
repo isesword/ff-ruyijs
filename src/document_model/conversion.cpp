@@ -3,16 +3,29 @@
 #include "js/Conversions.h"
 #include "js/ErrorReport.h"
 #include "js/Exception.h"
+#include "js/Stack.h"
 #include "js/Realm.h"
 #include "js/StableStringChars.h"
 #include "js/String.h"
 namespace ruyijs::document_model {
+// Capture the scripted caller's stack for page-visible error objects: Firefox
+// error objects always carry the caller's frames (报错栈检测点).
+static bool CallerStack(JSContext* cx, JS::MutableHandleObject stack) {
+  if (!JS::CaptureCurrentStack(cx, stack, JS::StackCapture(JS::MaxFrames(12)))) {
+    JS_ClearPendingException(cx);
+    stack.set(nullptr);
+  }
+  return true;
+}
+
 static bool Error(JSContext* cx, JSExnType type, const char* message) {
   JS::RootedString text(cx, JS_NewStringCopyZ(cx, message));
   JS::RootedString file(cx, JS_NewStringCopyZ(cx, "ruyijs:document"));
+  JS::RootedObject stack(cx);
+  CallerStack(cx, &stack);
   JS::Rooted<mozilla::Maybe<JS::Value>> cause(cx, mozilla::Nothing());
   JS::RootedValue value(cx);
-  if (!text || !file || !JS::CreateError(cx, type, nullptr, file, 1,
+  if (!text || !file || !JS::CreateError(cx, type, stack, file, 1,
       JS::ColumnNumberOneOrigin(), nullptr, text, cause, &value)) return false;
   JS_SetPendingException(cx, value);
   return false;
@@ -87,3 +100,5 @@ bool State::Check(Status status) {
   return ThrowDOM(*this, name, status.message);
 }
 }
+
+

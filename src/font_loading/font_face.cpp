@@ -1,5 +1,7 @@
 #include "font_loading/internal.h"
 
+
+
 #include "domain/font_loading/font_source.h"
 #include "runtime/native_constructor_trace.h"
 #include "runtime/page_helpers.h"
@@ -8,6 +10,7 @@
 #include "js/ArrayBuffer.h"
 #include "js/Conversions.h"
 #include "js/Exception.h"
+#include "js/Stack.h"
 #include "js/PropertyAndElement.h"
 #include "js/Promise.h"
 #include "js/Realm.h"
@@ -17,6 +20,16 @@
 #include <cstdint>
 #include <span>
 
+// Capture the scripted caller's stack for page-visible error objects: Firefox
+// error objects always carry the caller's frames (报错栈检测点).
+static bool CallerStack(JSContext* cx, JS::MutableHandleObject stack) {
+  if (!JS::CaptureCurrentStack(cx, stack, JS::StackCapture(JS::MaxFrames(12)))) {
+    JS_ClearPendingException(cx);
+    stack.set(nullptr);
+  }
+  return true;
+}
+
 namespace ruyijs::font_loading {
 
 const JSClass kFontFaceClass = {"FontFace", JSCLASS_HAS_RESERVED_SLOTS(kFontSlotCount)};
@@ -24,9 +37,11 @@ const JSClass kFontFaceClass = {"FontFace", JSCLASS_HAS_RESERVED_SLOTS(kFontSlot
 bool Fail(JSContext* cx, JSExnType type, const char* message) {
   JS::RootedString text(cx, JS_NewStringCopyZ(cx, message));
   JS::RootedString file(cx, JS_NewStringCopyZ(cx, "ruyijs:font"));
+  JS::RootedObject stack(cx);
+  CallerStack(cx, &stack);
   JS::Rooted<mozilla::Maybe<JS::Value>> cause(cx, mozilla::Nothing());
   JS::RootedValue value(cx);
-  if (!text || !file || !JS::CreateError(cx, type, nullptr, file, 1,
+  if (!text || !file || !JS::CreateError(cx, type, stack, file, 1,
       JS::ColumnNumberOneOrigin(), nullptr, text, cause, &value)) return false;
   JS_SetPendingException(cx, value);
   return false;
@@ -35,8 +50,10 @@ bool Fail(JSContext* cx, JSExnType type, const char* message) {
 bool SyntaxErrorValue(JSContext* cx, JS::MutableHandleValue value) {
   JS::RootedString text(cx, JS_NewStringCopyZ(cx, "Invalid font data"));
   JS::RootedString file(cx, JS_NewStringCopyZ(cx, "ruyijs:font"));
+  JS::RootedObject stack(cx);
+  CallerStack(cx, &stack);
   JS::Rooted<mozilla::Maybe<JS::Value>> cause(cx, mozilla::Nothing());
-  return text && file && JS::CreateError(cx, JSEXN_SYNTAXERR, nullptr, file, 1,
+  return text && file && JS::CreateError(cx, JSEXN_SYNTAXERR, stack, file, 1,
       JS::ColumnNumberOneOrigin(), nullptr, text, cause, value);
 }
 

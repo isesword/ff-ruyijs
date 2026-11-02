@@ -6,6 +6,7 @@
 #include "js/CharacterEncoding.h"
 #include "js/ErrorReport.h"
 #include "js/Exception.h"
+#include "js/Stack.h"
 #include "js/JSON.h"
 #include "js/Promise.h"
 #include <cstring>
@@ -14,6 +15,17 @@
 #include "js/String.h"
 #include "js/Symbol.h"
 #include <string>
+
+// Capture the scripted caller's stack for page-visible error objects: Firefox
+// error objects always carry the caller's frames (报错栈检测点).
+static bool CallerStack(JSContext* cx, JS::MutableHandleObject stack) {
+  if (!JS::CaptureCurrentStack(cx, stack, JS::StackCapture(JS::MaxFrames(12)))) {
+    JS_ClearPendingException(cx);
+    stack.set(nullptr);
+  }
+  return true;
+}
+
 
 namespace ruyijs {
 WebKit::WebKit(JSContext* context, JS::HandleObject global, PageHelpers& trace, void* owner)
@@ -26,9 +38,11 @@ bool WebKit::FailKind(JSContext* cx, const char* message, int16_t kind) {
   // Messages may quote script input (a URL), which is UTF-8.
   JS::RootedString text(cx, JS_NewStringCopyUTF8Z(cx, JS::ConstUTF8CharsZ(message, strlen(message))));
   JS::RootedString file(cx, JS_NewStringCopyZ(cx, "ruyijs:web"));
+  JS::RootedObject stack(cx);
+  CallerStack(cx, &stack);
   JS::Rooted<mozilla::Maybe<JS::Value>> cause(cx, mozilla::Nothing());
   JS::RootedValue value(cx);
-  if (!text || !file || !JS::CreateError(cx, JSExnType(kind), nullptr, file, 1,
+  if (!text || !file || !JS::CreateError(cx, JSExnType(kind), stack, file, 1,
       JS::ColumnNumberOneOrigin(), nullptr, text, cause, &value)) return false;
   JS_SetPendingException(cx, value);
   return false;

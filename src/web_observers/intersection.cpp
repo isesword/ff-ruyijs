@@ -17,6 +17,7 @@
 #include "js/CallAndConstruct.h"
 #include "js/Conversions.h"
 #include "js/Exception.h"
+#include "js/Stack.h"
 #include "js/ForOfIterator.h"
 #include "js/Object.h"
 #include "js/PropertyAndElement.h"
@@ -26,6 +27,17 @@
 #include <algorithm>
 #include <cmath>
 #include <new>
+
+// Capture the scripted caller's stack for page-visible error objects: Firefox
+// error objects always carry the caller's frames (报错栈检测点).
+static bool CallerStack(JSContext* cx, JS::MutableHandleObject stack) {
+  if (!JS::CaptureCurrentStack(cx, stack, JS::StackCapture(JS::MaxFrames(12)))) {
+    JS_ClearPendingException(cx);
+    stack.set(nullptr);
+  }
+  return true;
+}
+
 
 namespace ruyijs::web_observers {
 const JSClass kIntersectionClass = {"IntersectionObserver", JSCLASS_HAS_RESERVED_SLOTS(1)};
@@ -37,9 +49,11 @@ namespace {
 bool RangeError(JSContext* cx, const char* message) {
   JS::RootedString text(cx, JS_NewStringCopyZ(cx, message));
   JS::RootedString file(cx, JS_NewStringCopyZ(cx, "ruyijs:observers"));
+  JS::RootedObject stack(cx);
+  CallerStack(cx, &stack);
   JS::Rooted<mozilla::Maybe<JS::Value>> cause(cx, mozilla::Nothing());
   JS::RootedValue value(cx);
-  if (!text || !file || !JS::CreateError(cx, JSEXN_RANGEERR, nullptr, file, 1,
+  if (!text || !file || !JS::CreateError(cx, JSEXN_RANGEERR, stack, file, 1,
                                          JS::ColumnNumberOneOrigin(), nullptr, text, cause,
                                          &value)) return false;
   JS_SetPendingException(cx, value);
