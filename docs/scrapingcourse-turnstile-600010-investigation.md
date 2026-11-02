@@ -839,3 +839,32 @@ fo 请求/响应尺寸与轮次。次选：静态去扁平化挑战 VM 读退出
 
 **2 小时无人值守马拉松运行中**（`debug_tmp/marathon120.log`，Context
 timeout=7200）——若完成则 600010 = "太慢"；若仍不终止则程序/调度差异实锤。
+
+
+### §31 报错栈修复 + 扩展探针差集收敛（2026-11-04）
+
+**补环境社区方法论对照**（sdenv/瑞数 vmp 补环境清单、CreepJS lies、
+Turnstile 公开研究）逐条对照引擎：大部分已覆盖，抓出两个未覆盖面。
+
+**报错栈检测点修复（6491c68）**：`CreateExceptionValue` 与全部
+`JS::CreateError` 页面可见抛错点（DOM 校验/WebKit throw 助手/FontFace/
+credentials statics/intersection observer）此前传 nullptr 栈 → 页面拿到的
+DOM 异常 `stack` 恒空。现以 `JS::CaptureCurrentStack`（MaxFrames 12）捕获
+调用方 SavedFrame 链，`error.stack` 与 FF 同形（页面帧在顶）。
+
+**CSS.supports 补齐（f4cd8cb）**：appearance + -moz/-webkit 别名（全兼容
+关键字集）与 print-color-adjust/color-adjust（economy/exact/auto）进
+initial_values 表 + supports 校验链。
+
+**querySelector(All) 异常消息对齐**：FF 格式
+`Document.querySelectorAll: '<sel>' is not a valid selector`（接口名随
+receiver 变化，SyntaxError）。
+
+**WebGL 渲染差异定性**（全屏 quad 纯色三角带）：内部像素逐字节一致；
+**左右边界列（quad 边恰好压在像素边界）引擎给 50% 覆盖**（64,102,25,127）
+而 FF 给全值（128,204,51）—— 解析光栅化的边界填充约定偏差，属于已知
+Skia-AA 类修复范畴。转下轮：对照 Skia 源码修边界覆盖约定。
+
+**探针剩余差集**（11 项）：7 项环境配置（headless FF 窗口尺寸/焦点/
+timeOrigin——非缺陷）、appendChild 消息格式（FF quirk）、WebGL 边界覆盖×2、
+own-placement 13 项、CSS.supports 周边残余。
