@@ -706,3 +706,29 @@ ULP、Skia stroke AA），不在 IP/网络。
 **工具沉淀**：`Context.put_resource` 可整体替身第三方 JS（本次给
 challenges.cloudflare.com/turnstile/v0/api.js 注仪表抓到 600010），是
 后续挑战面调试的标准手法。example：`python -m ruyijs.examples ippure`。
+
+
+### §26 挑战内部直测：600010 前的最后一环是超时 PoW（2026-11-03）
+
+调试基建（调试构建，均为惰性生效）：
+- **传输层记账**：NeckoHttp 对 challenges.cloudflare.com 打请求/响应 body（截 1800B）→ `/tmp/probe/ns_trace.txt`
+- **HTML 注入钩子**：NeckoHttp 对挑战文档注入 `/tmp/probe/inject_rch.js`（复用文档 CSP nonce——meta 是 `&#39;nonce-…&#39;` 转义形式，须按 `nonce-` + 标识符段提取）、对 ippure.com 注入 `/tmp/probe/inject_page.js` 收集器；探针数据走 `parent.postMessage` → `window.__tsProbe` → Python 读
+- **挂起看门狗**：JS_AddInterruptCallback + 看门狗线程，advance 挂起 8s 后在自旋帧内抓 `JS::DescribeScriptedCaller`（AutoFilename + line + ColumnNumberOneOrigin）→ `/tmp/probe/hang_stack.txt`
+
+**测量结果**（ippure.com/cloudflare，DC 代理出口）：
+
+| 阶段 | 结果 |
+|---|---|
+| rch 引导文档 ×2 | 200，注入探针执行 ✓ |
+| 内部握手 | widget 自发 `meow` seq=1→2 收发 ✓ |
+| fo POST 两轮 | 200，挑战程序 878KB×2 下发 ✓ |
+| 后续挑战往返 | `/g/pat/` → **401**；`/g/ci/` → 200；二轮 fo → 200（125KB）|
+| 挑战程序执行 | **活跃计算**（自旋列号持续移动：403279→259131→414004→617400…，为控制流扁平化状态机 + 位运算哈希例程）|
+| PoW 时长 | >105s 未完，引擎被 rpc 超时回收 |
+
+**排除项**（本地复现全通过）：子环境 blob Worker 收发、跨 frame port、引擎 JIT 吞吐
+（同型位运算哈希基准：引擎 733ms ≈ Node 740ms）。
+
+**结论**：非死锁、非引擎慢 —— CF 给本环境派了超长 PoW（可疑环境 → 高难度
+tarpit），与 600010 同根：**环境评分低 → 挑战加压**。修派生面（audio 表生成
+ULP、Skia stroke AA）仍是正路；FF159 对拍（Phase 3）可进一步确证难度差。

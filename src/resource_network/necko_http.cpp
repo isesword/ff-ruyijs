@@ -1,6 +1,7 @@
 #include "resource_network/necko_http.h"
 #include "resource_network/necko_helper.h"
 #include "resource_network/necko_wire.h"
+#include <cerrno>
 #include <chrono>
 #include <condition_variable>
 #include <memory>
@@ -109,10 +110,65 @@ bool Acquire(const std::string& origin, ULONGLONG deadline, Lease* lease) {
   }
 }
 }
+namespace {
+// Debug-only HTML injection for the challenge-surface investigation: the file
+// is read per response so the probe iterates without rebuilding. The rch
+// document enforces `script-src 'nonce-…'`, so the injected tag reuses the
+// document's own nonce.
+std::string FileIfPresent(const char* path) {
+  if (FILE* file = fopen(path, "rb")) {
+    std::string content;
+    char buffer[4096];
+    size_t got = 0;
+    while ((got = fread(buffer, 1, sizeof(buffer), file)) > 0) content.append(buffer, got);
+    fclose(file);
+    return content;
+  }
+  return {};
+}
+void InjectHtml(const std::string& url, std::string* body) {
+  const char* why = "ok";
+  if (body->size() < 200 || body->compare(0, 9, "<!DOCTYPE") != 0) why = "no-doctype";
+  const bool challenges = url.find("challenges.cloudflare.com") != std::string::npos;
+  const bool page = url.find("ippure.com") != std::string::npos;
+  if (!challenges && !page) why = "no-host";
+  const std::string script = why == nullptr || (challenges || page)
+      ? FileIfPresent(challenges ? "/tmp/probe/inject_rch.js" : "/tmp/probe/inject_page.js")
+      : std::string();
+  if (script.empty()) why = why && strcmp(why, "ok") ? why : "no-script";
+  if (FILE* dbg = fopen("/tmp/probe/inject_trace.txt", "a")) {
+    fprintf(dbg, "[inject] %s why=%s len=%zu\n", url.substr(0, 110).c_str(), why ? why : "?", body->size());
+    fclose(dbg);
+  }
+  if ((why && strcmp(why, "ok")) || script.empty()) return;
+  std::string tag = "<script";
+  if (challenges) {
+    // The policy lives in an escaped meta attribute (&#39;nonce-…&#39;); take the
+    // identifier run after the first "nonce-" occurrence.
+    auto at = body->find("nonce-");
+    if (at == std::string::npos) { if (FILE* dbg = fopen("/tmp/probe/inject_trace.txt", "a")) { fprintf(dbg, "[inject] %s why=no-nonce\n", url.substr(0, 110).c_str()); fclose(dbg); } return; }
+    at += 6;
+    std::string nonce;
+    while (at < body->size()) {
+      const char c = (*body)[at];
+      if (!((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' || c == '-')) break;
+      nonce += c;
+      ++at;
+    }
+    if (nonce.empty()) return;
+    tag += " nonce=\"" + nonce + "\"";
+  }
+  tag += ">" + script + "</script>";
+  const auto at = body->rfind("</body>");
+  body->insert(at == std::string::npos ? body->size() : at, tag);
+}
+}
 bool NeckoHttp(const std::string& method, const std::string& url, const HeaderPairs& headers,
                const std::string& body, HttpResult* result, uint32_t timeoutMs) {
   const ULONGLONG deadline = GetTickCount64() + timeoutMs;
   const std::string origin = OriginOf(url);
+  const bool probe = url.find("challenges.cloudflare.com") != std::string::npos ||
+                     url.find("ippure.com") != std::string::npos;
   // A helper can disappear between two requests (proxy tunnel reset, worker
   // restart, or a half-closed pipe).  In that case no response frame exists,
   // so retrying the same request on a fresh helper is safe and preserves the
@@ -136,9 +192,25 @@ bool NeckoHttp(const std::string& method, const std::string& url, const HeaderPa
     }
     HttpResult candidate;
     bool framed = false;
+    const ULONGLONG began = GetTickCount64();
     const bool written = WriteNeckoRequest(session->input, method, url, headers, body, deadline);
     const bool read = written && ReadNeckoResponse(session->output, &candidate, deadline, &framed);
+    if (probe) {
+      FILE* dbg = fopen("/tmp/probe/ns_trace.txt", "a");
+      if (!dbg) { fprintf(stderr, "[ns] fopen failed errno=%d\n", errno); }
+      else {
+        fprintf(dbg, "=== %s %s (attempt %d, %llu ms)\n", method.c_str(), url.c_str(), attempt,
+                static_cast<unsigned long long>(GetTickCount64() - began));
+        if (read)
+          fprintf(dbg, "  RESP %d %zu ct=%.80s\n", candidate.status, candidate.body.size(),
+                  candidate.error.c_str());
+        else
+          fprintf(dbg, "  FAIL err=%.200s framed=%d\n", candidate.error.c_str(), framed ? 1 : 0);
+        fclose(dbg);
+      }
+    }
     if (read) {
+      if (probe) InjectHtml(url, &candidate.body);
       *result = std::move(candidate);
       return true;
     }

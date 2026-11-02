@@ -5,11 +5,58 @@
 #include "jsapi.h"
 #include "js/PropertyAndElement.h"
 #include "js/Conversions.h"
+#include <atomic>
+#include <chrono>
 #include <cmath>
+#include <cstdio>
 #include <initializer_list>
+#include <thread>
 
 namespace ruyijs {
 using execution_scheduling::Error;
+// Debug hang probe: a task that never yields spins inside one JS frame; the
+// interrupt callback then runs in that frame and records its caller.
+namespace {
+std::atomic<JSContext*> gHangCx{nullptr};
+std::atomic<long> gPetted{0};
+std::atomic<bool> gArmed{false};
+
+bool HangProbe(JSContext* cx) {
+  JS::AutoFilename file;
+  uint32_t line = 0;
+  JS::ColumnNumberOneOrigin column(0);
+  const bool scripted = JS::DescribeScriptedCaller(&file, cx, &line, &column);
+  if (FILE* dbg = fopen("/tmp/probe/hang_stack.txt", "a")) {
+    fprintf(dbg, "[hang] scripted=%d caller=%s:%u:%u\n", scripted ? 1 : 0,
+            scripted && file.get() ? file.get() : "(none)", line,
+            column.oneOriginValue());
+    fclose(dbg);
+  }
+  gPetted = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+  return true;
+}
+
+void ArmHangWatchdog(JSContext* cx) {
+  static bool installed = false;
+  if (!installed) {
+    installed = true;
+    gHangCx = cx;
+    JS_AddInterruptCallback(cx, HangProbe);
+    std::thread([] {
+      for (;;) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        if (!gArmed.load()) continue;
+        const long now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        if (now - gPetted.load() >= 8) {
+          if (auto* context = gHangCx.load()) JS_RequestInterruptCallback(context);
+        }
+      }
+    }).detach();
+  }
+  gPetted = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+  gArmed = true;
+}
+}
 static bool Fields(JSContext* cx, JS::HandleObject request,
                     std::initializer_list<const char*> permitted) {
   JS::Rooted<JS::IdVector> keys(cx, JS::IdVector(cx));
@@ -100,7 +147,9 @@ bool SchedulingControl::Request(JS::HandleObject request, JS::MutableHandleValue
   if (!owner_.ValidateAdvance(ms, step, uint32_t(budget))) return false;
   environment_.Freeze();
   owner_.Freeze();
+  ArmHangWatchdog(cx_);
   const auto status = advance ? owner_.Advance(ms, step, uint32_t(budget)) : owner_.Drain(uint32_t(budget));
+  gArmed = false;
   return Describe(status, result);
 }
 }
