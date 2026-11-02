@@ -649,3 +649,21 @@ module（type="module" 无 src）仍不执行——断点在 PageLoad 循环之�
 （ModuleSession::Load 未触发或更早）。下一步：在 page_load.cpp 的 Source/主
 循环加临时插桩，打印每个 script 的 type/module 判定/deferred 归类，定位
 内联 module 从 preparation 到 module 循环之间哪一环丢失。
+
+
+### §24 补充：Rocket Loader 在引擎上的行为分析（2026-11-03）
+
+IPPure 页面使用 Cloudflare Rocket Loader。实测引擎行为：
+- rocket-loader.min.js → 200 加载 ✓
+- 内联标记脚本（type="<hash>-text/javascript"）→ **执行** ✓（__VP_HASH_MAP__ 等已定义）
+- **外链标记 module script（app.js）→ 不加载** ✗
+- 页面最终状态：VitePress 静态骨架（Vue 未 mount、检测组件不存在）
+
+RL 对 inline 脚本正常执行，但**外链 module script 的加载**依赖 RL 创建新的
+`<script type="module" src>` 元素——这需要引擎支持**动态插入 module script**
+的执行（当前不支持，详见 ESM 缺口分析）。
+
+**修复路径**：实现动态插入 module script 的执行路径（module owner 接线），
+或者让引擎在解析时直接识别 RL 标记类型并原生加载（跳过 RL 中转）。
+后者更稳健——推荐在 `PrepareScript` 的 `rocket_loader_essence` 剥离后，
+将 RL 标记的 module 走 `ModuleSession` 管线（src 由引擎 fetch）。
