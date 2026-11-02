@@ -563,3 +563,20 @@ tz/IP 矛盾（上海时间 + 美国 IP）是真实可探测的不一致。
 注意：profile JSON 不接受未知键（"invalid Firefox environment baseline groups"
 校验），使用条件以本节为准，不写入 profile 文件。
 `_usage` 键标注使用条件（引擎忽略未知键）。
+
+
+## 24. 六层检测体系对照终表（2026-11-03，来源：segmentfault CF 对抗综述）
+
+| 层 | 文章要点 | 我们的覆盖 |
+| --- | --- | --- |
+| L1 IP 信誉 | DC 低/住宅高 | ✅ 双极实测（DC+住宅均 600010 → 排除） |
+| L2 TLS/JA3 | 最易忽视，改 UA 无用 | ✅ peet.ws 实测一致（真 NSS/Necko） |
+| L3 请求头完整性/顺序 | 顺序不符先暴露 | ✅ 同一 Gecko 栈生成（天然一致）；echo 抓头无时间泄露、无缺失头 |
+| L4 JS Challenge | 混淆 JS 环境检测 | ✅ VM 扫描完整执行（access log 全量确认） |
+| L5 浏览器指纹 | webdriver/canvas/WebGL/字体/插件/分辨率 | ✅ 超出文章深度：bit-exact 级（音频/canvas/枚举 1500+） |
+| L6 行为分析 | 鼠标轨迹/点击偏移/停留 | ⚠️ mousemove 轨迹未模拟（文章自注"多数站不开启"）；type 60ms 间隔有 |
+
+**文章的定位是外部工具（requests/Playwright）从零攻坚**；我们的引擎已内嵌真
+SpiderMonkey + 真 Necko + FF Skia——L2/L3/L4 天然同源，L5 已磨到 bit-exact，
+L1 已双极排除。**与文章方案对比表中"官方 API"之外的最强状态等价，且静态可
+对拍的检测点已 100% 覆盖**。残余仍在派生行为深处与 inner 私有实现。
