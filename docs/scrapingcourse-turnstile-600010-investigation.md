@@ -545,3 +545,21 @@ setTimeoutDrift 2/2/5/10/50/100、now 200 读 unique=1（同 1ms 网格）——
 ruyijs 一致**。FF159 tp2 页级精确对拍因页面回传不稳定未完成（无音频设备的
 headed 会话限制），时间系统判定为**已校准同步**（三源交叉：FF tprobe 网格 =
 ruyijs 网格；Date 墙钟偏差 0.3ms；推进比值正常）。
+
+
+## 23. 时区/出口匹配规范（2026-11-03）
+
+时间系统实测结论（§20 时间校准）：请求头无时间泄露、Date UTC 与宿主墙钟偏差
+0.3ms、JS 本地时间显示由 profile tz 决定。**tz 必须与出口 IP 地区自洽**——
+tz/IP 矛盾（上海时间 + 美国 IP）是真实可探测的不一致。
+
+两个 profile 版本：
+- `profiles/firefox-environment-macos.json` —— **tz=America/Los_Angeles**，
+  配美国出口（Clash 代理，默认场景）。构建默认使用。
+- `profiles/firefox-environment-macos-cn.json` —— **tz=Asia/Shanghai**，
+  配住宅直连/中国出口。构建时 `--profile profiles/firefox-environment-macos-cn.json`。
+
+两版共享宿主一致身份（12 核 / 1512×982@30 / en-US）。切出口 = 切 profile 重建。
+注意：profile JSON 不接受未知键（"invalid Firefox environment baseline groups"
+校验），使用条件以本节为准，不写入 profile 文件。
+`_usage` 键标注使用条件（引擎忽略未知键）。

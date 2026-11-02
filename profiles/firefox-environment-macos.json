@@ -46,7 +46,7 @@
   "href": "https://example.test/"
  },
  "locale": {
-  "timezone": "Asia/Shanghai",
+  "timezone": "America/Los_Angeles",
   "osLocale": ""
  },
  "webgl": {
