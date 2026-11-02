@@ -623,3 +623,19 @@ IPPure 页是 VitePress（全 ES module 构建）。实测引擎内：
 IPPure 页残余现象：app.js（parser src module）仍未 fetch。该页有 RL 注入的
 重复 script 副本与 src 被破坏的 beacon module，NextScript 遍历与 ModuleSession
 Load 的交互需逐点调试（下一轮）。动态 module 支持是独立的中型工程。
+
+
+## 25. 关键背景更正：作者自己也在 mac 上卡 verdict（2026-11-03）
+
+重新精读上游 truepeople README（作者 20261031 亲笔）：**作者在 upstream mac 上调
+CF 托管质询同样未通过**——网络全 200、SW 健康、指纹变体（mac 基线/Windows 档案/
+只换 navigator）全部无效，边缘不下发 clearance；真 FF159 geckodriver 同出口跑同
+质询也未通过（托管质询比 Turnstile demo 更难）。作者提出的方向与我们完全一致
+（逐信号与真 FF 对照），并给出"接受派生面边界"的保留选项。**"作者有现成答案"
+的假设不成立**——inner 的 Windows 能过靠 Windows 派生面天然自洽，不是清单磨的。
+作者手里有的是：检测点经验、Windows 侧信号知识、以及与我们合作打磨 mac 派生面
+的动机（他的 macos 分支就是 PR#8）。
+
+本轮 ES module 缺口的修复价值因此更清晰：**IPPure 的企业版 Bot Management 风险
+指数 + Turnstile 双模式 + reCAPTCHA 分数是一个现成的、可视化的、免费的 mac 环境
+评分器**——引擎补上 module 执行后即可用它持续量化派生面的收敛进度。
