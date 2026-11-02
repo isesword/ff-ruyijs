@@ -518,3 +518,16 @@ AnimationTimeline 补全后 FF159 实测对照：`AnimationTimeline -> Object` �
 与真 Firefox 完全一致**。getUserMedia({video}) 在 FF 侧走权限流程（1.5s 内无
 拒绝记录），我们报 NotAllowedError 为合理近似（CF 探测通常只比对错误名）。
 timeline 面审计关闭。
+
+
+## 23. VM 采集面复测：与已覆盖面完全重合（2026-11-03）
+
+新挑战版本 access log（19667 行，`access_log_v2.jsonl`）与昨日逐 kind/字段 diff：
+**完全重合，零新增**。11 类（navigator 21 / screen 10 / location 9 / viewport 3 /
+storage 3 / locale 2 / history / matchMedia 8 / visibilityState / speech 3 /
+css.supports color）——**全部已在 §18/§20 与真 FF159 穷举对拍一致或自洽**。
+
+逻辑闭环达成：VM 只读这些字段 → 字段值全部一致 → 同 IP 同窗 FF 过、我们不过
+→ **判定不在采集值，而在引擎响应读取的行为特征或 /fo/ 之外的深层服务端信号**。
+这两者都无法静态对拍（前者是引擎实现微观行为，后者是 CF 服务端黑盒）。
+静态可查的检测点地图已 100% 覆盖并收敛。
