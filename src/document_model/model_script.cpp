@@ -1,8 +1,10 @@
 // Script policy lives on the original Element, never in a runtime-side index.
 #include "document_model/model_internal.h"
+#include "domain/document_model/script_state.h"
 namespace ruyijs::document_model {
 namespace {
-bool ModuleType(DomStringView value) noexcept {
+bool ModuleType(DomStringView value_raw) noexcept {
+  std::basic_string_view<char16_t> value = ruyijs::domain::document_model::rocket_loader_essence(value_raw);
   auto whitespace = [](char16_t c) {
     return c == u'\t' || c == u'\n' || c == u'\f' || c == u'\r' || c == u' ';
   };

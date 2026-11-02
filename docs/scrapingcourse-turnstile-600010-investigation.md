@@ -609,3 +609,17 @@ IPPure 页是 VitePress（全 ES module 构建）。实测引擎内：
 表面差异），也是 IPPure 检测组件静默的原因。修复需实现 SM159 的 module 加载
 （JS::CompileModule/Instantiate/Evaluate + 动态 import 钩子，中等规模工程），
 完成后现代 ESM 站点整体可用，IPPure 检测也随之工作（可作为环境分的直接试金石）。
+
+
+### §23 续（同日）：parser src module 已通，IPPure 残余卡点待查
+
+验证矩阵（最小用例实测）：
+- parser-inserted src module（`<script type="module" src>`）：✅ 执行
+- 内联 module script：❌ 未实现（Source 文档化的边界："Inline module evaluation
+  and dynamic module preparation remain outside this owner pass"）
+- **动态插入 module**（DOM append）：❌ 未执行（动态 module 的 module owner 未接线）
+- RL 变体 type（classic/module）：✅ 识别执行
+
+IPPure 页残余现象：app.js（parser src module）仍未 fetch。该页有 RL 注入的
+重复 script 副本与 src 被破坏的 beacon module，NextScript 遍历与 ModuleSession
+Load 的交互需逐点调试（下一轮）。动态 module 支持是独立的中型工程。

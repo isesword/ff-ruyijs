@@ -11,8 +11,21 @@ struct ScriptState {
   // the text did not come from the document's markup.
   uint32_t line = 0, column = 0;
 };
+// Cloudflare Rocket Loader rewrites script types to "<hex digest>-<essence>"
+// (e.g. "41f22074...-text/javascript"); the digest length is not fixed, so a
+// leading run of hex digits followed by '-' is stripped before matching. The
+// stripped form is only accepted when the remainder matches a known essence
+// (the callers), which keeps arbitrary hyphenated types from passing.
+template<class Char> std::basic_string_view<Char> rocket_loader_essence(std::basic_string_view<Char> value) {
+  auto hex=[](Char c){return (c>='0'&&c<='9')||(c>='a'&&c<='f')||(c>='A'&&c<='F');};
+  size_t i=0;
+  while(i<value.size()&&hex(value[i]))++i;
+  if(i>=4&&i<value.size()&&value[i]==(Char)'-')return value.substr(i+1);
+  return value;
+}
 // HTML JavaScript MIME type essence matching, shared by preparation and loading.
 template<class Char> bool script_classic(std::basic_string_view<Char> value) {
+  value=rocket_loader_essence(value);
   auto space=[](Char c){return c==9||c==10||c==12||c==13||c==32;};
   while(!value.empty()&&space(value.front()))value.remove_prefix(1);
   while(!value.empty()&&space(value.back()))value.remove_suffix(1);
