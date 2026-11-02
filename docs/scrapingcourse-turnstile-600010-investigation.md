@@ -761,3 +761,30 @@ IP 信誉**（209.126.8.142 DC 段）对所有人加压。引擎的差距变为�
 均非确定（排除「确定性 PRNG 使 PoW 搜索走重复候选」假设）；perf/Date 驱动
 循环精确退出（排除「时钟网格使循环永不到期」假设）。挑战循环的输入源差异
 待深入：候选 = 位读取字节源（异步流/Worker 回传）或挑战内部校准读数。
+
+
+### §28 派生面收敛：701 个缺失成员清零 + BufferSource 修复（2026-11-03 深夜）
+
+**表面成员层（`src/runtime/surface_parity.cpp`，生成器 `/tmp/probe/gen_surface.py`）**
+
+- FF159 headless 逐接口测量（成员名 + 访问器类型 + 常量值，701 项/107 接口）
+  → 生成 presence 层：仅当名字不是 own key 时定义，子系统真成员永远优先。
+  主 realm 与 child-frame resource port 都安装。
+- 复测：**missing 701 → 0**（extra 13 为 own-vs-inherited 摆放差异与
+  headless profile 禁 push 的测量伪影）。
+
+**AudioBufferSourceNode（功能性 bug 修复，7858653）**
+
+- 修复前：buffer source 从不注册为渲染源、无 DSP → 所有 buffer 驱动的
+  离线渲染输出全零。
+- 修复后：构造即注册；start(when, offset)/stop 落保留槽；ProcessNode 按
+  playbackRate（经 AudioParam 模型取值，注意不是对象 id）、loop 环绕与
+  目标采样率重采样播放；图发布 buffer 声道数。
+- 对拍：buffer→destination 与 FF159 **逐样本一致（14030.585411）**；
+  过 compressor 相对差 1.4e-5（剩余为压缩器 DSP 微差）。
+- 教训：FF headless 的 startRendering 对 start/connect 顺序敏感（先
+  connect 后 start 会挂死），**headless 不可作 audio 对拍基准**。
+
+**canvas 分解结论**（getImageData 逐像素）：fillRect/strokeLine/gradient
+**像素完全一致** —— Skia 解析光栅化移植正确；剩余两处为 ①fillText 字形
+光栅化（mac 上 FF 走 CoreText）②PNG 编码器字节（同像素不同压缩）。
