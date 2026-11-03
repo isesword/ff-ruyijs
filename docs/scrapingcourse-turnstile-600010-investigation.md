@@ -868,3 +868,24 @@ Skia-AA 类修复范畴。转下轮：对照 Skia 源码修边界覆盖约定。
 **探针剩余差集**（11 项）：7 项环境配置（headless FF 窗口尺寸/焦点/
 timeOrigin——非缺陷）、appendChild 消息格式（FF quirk）、WebGL 边界覆盖×2、
 own-placement 13 项、CSS.supports 周边残余。
+
+
+### §32 WebGL 渲染逐字节对齐（5b99cfc，2026-11-04）
+
+**根因**：软件光栅化器按次绘制把 Resolve 后的颜色写进整个 RGBA8 像素，
+共享边/对角线的重叠绘制互相破坏样本贡献——全屏 quad 沿对角线切成两个
+三角形时，对角线穿过的像素只剩半强度（64,102,25,127），FF 全值
+（128,204,51,255）。
+
+**修复**：绘图缓冲加持久 4 样本槽（width*height*4*4），draw 只写覆盖样本
+槽的片段全色，clear 填全部槽，绘制后按像素解析（Resolve8 四槽和）回
+RGBA8 视图。surface.cpp 的单一消费点无需改动。
+
+**结果**：WebGL（100×100 三角带）与 FF159 **hash 完全一致**
+（1339912064 / 1876058112）；扩展探针差集 16 → 9（剩余 = 8 项环境配置 +
+appendChild 消息 quirk）。
+
+**运行时陷阱记录**：调试输出必须落工作区（/tmp 被沙箱虚拟化）；pkill -9
+杀 FF 留 pending 崩溃 ping → 下次启动 crashreporter Glean panic 启动即死
+（清 datareporting/crashes/saved-telemetry-pings 或用 SIGTERM）；带
+-no-remote 的多次启动会互相吞 URL。
