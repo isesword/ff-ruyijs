@@ -915,3 +915,33 @@ HTTP 层全程 200，无拒绝。
 1. 修 GC 崩溃（保命）：拿崩溃点 arena/kind 信息复现最小化
 2. init→fo 之间的 VM 操作静态还原（AST 管线就绪）：对照引擎逐 API 差异
 3. FF 侧 init 后立即 fo，说明 init 处理读的输入在引擎里缺一个
+
+
+### §34 心跳机制还原 + 心跳饥饿排除（2026-11-04）
+
+**AST 还原 VM 的调度骨架**（deob_step1.js 全解码）：
+- boot：`Dn(T9)` 首跑 + `setInterval(看门狗, 1000)`：`Sd(Date.now(), zi) >
+  lfoVJ9(10000)` → `mmb()` → postMessage("overrunBegin")【IPPure"前端异常"
+  的来源】+ `setInterval(T9, 1000)`：`T9() { bW(ob, Date.now()) }`、
+  `ob(t) { zi = t }` —— 心跳即喂时间戳
+- init 消息 → 重启 `zs = setInterval(T9, 1000)`
+- 72s 看门狗：`setTimeout(Sq, wjSe2=72000)` → postMessage("interactiveTimeout")
+  【600010 的直接来源】
+- VM 网络 op：**XHR + loadend 异步续接**（open POST → send → VM 暂停 →
+  loadend 回调恢复字节码）
+
+**心跳饥饿假设排除**（关键对照实验，v2-v5 页面形态逐级逼近 VM）：
+- 引擎 interval 单测：12s 阻塞后补发 1 次 + 精确 500ms 节奏 ✓
+- 子环境（跨域 iframe）interval：同样健康 ✓
+- v5（45s 纯同步块 + 心跳）：**引擎与 FF 行为完全一致**——块期间冻结
+  （beats=0）、块后恢复（引擎 beat1-16、FF beat1-5，FF exfil 实测）
+
+**结论修正**：引擎 interval 无缺陷。真实差异 = VM 字节码里存在一个条件
+分支：FF 下让出主线程（异步续接），引擎下继续同步自旋。让出点即检测点
+所在 —— VM 的某个 op 在引擎里返回了不同值（或异常被吞），走到了"继续
+同步"分支。结合 §29 的 API 消费全零：自旋的那段字节码不含任何 host API
+调用，是纯算术循环 —— 检测点在其上游，让出失败后落入的"惩罚路径"。
+
+**下一步**：字节码级 trace —— 在 lf() 解释器分派处插桩（引擎调试构建），
+dump 自旋期间执行的操作码序列与操作数，直接看到它卡在哪条指令、循环
+条件是什么。这比继续黑盒对照更快。
