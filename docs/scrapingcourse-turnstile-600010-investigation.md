@@ -889,3 +889,29 @@ appendChild 消息 quirk）。
 杀 FF 留 pending 崩溃 ping → 下次启动 crashreporter Glean panic 启动即死
 （清 datareporting/crashes/saved-telemetry-pings 或用 SIGTERM）；带
 -no-remote 的多次启动会互相吞 URL。
+
+
+### §33 Reqable 对拍：引擎卡在 init→fo 之间 + GC 崩溃实锤（2026-11-04）
+
+**用户 Reqable 抓 FF 完整链**（scrapingcourse，同出口）：
+```
+rch GET 200 → fo POST 4354B 200（一次）→ eb/chl_api_ni POST 1666B → token
+```
+HTTP 层全程 200，无拒绝。
+
+**引擎侧行为流**（注入探针 + fo 计数）：
+- 无注入基线：fo 重试循环，4 分钟 14 次全 200，引擎存活
+- 有注入：`boot → meow seq=1 收发 ✓ → init 发出 →【300s 无 API 消费的
+  chunk，进程死亡】`，fo_count=0 —— **卡在 init 之后、首次 fo 之前**
+- 崩溃报告（js-2026-11-03-231723.ips）：**GC sweep 阶段段错误**
+  （Arena::finalize<JSObject> 解引用无效对象）
+
+**结论修正**：引擎不是"太慢"也不是单纯"陷阱循环"——是 VM 在 init 处理
+路径上遇到了引擎的某个缺陷（返回值/异常/对象身份），进入错误内部状态
+（自旋+异常分配），最终触发引擎 GC 的 UAF/段错误。GC 崩溃本身是第二个
+独立 bug（增量 sweep 对某些对象图不安全）。
+
+**下一步**：
+1. 修 GC 崩溃（保命）：拿崩溃点 arena/kind 信息复现最小化
+2. init→fo 之间的 VM 操作静态还原（AST 管线就绪）：对照引擎逐 API 差异
+3. FF 侧 init 后立即 fo，说明 init 处理读的输入在引擎里缺一个
