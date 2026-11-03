@@ -18,8 +18,11 @@ double Edge(const double a[2], const double b[2], double x, double y);
 // The D3D11 top-left fill rule: a sample exactly on an edge belongs to the
 // triangle only when that edge is a top or left edge for the triangle's winding.
 bool InsideEdge(double weight, const double a[2], const double b[2], double sign);
-// How many of the four samples of pixel (x, y) the triangle covers.
-int32_t Coverage(const double* a, const double* b, const double* c, int32_t x, int32_t y,
-                 double sign);
+// Which of the four samples of pixel (x, y) the triangle covers: bit i set =
+// sample i covered. The bits feed the per-sample drawing buffer, where a
+// second triangle covering different samples of the same pixel keeps both
+// contributions (the MSAA default framebuffer behaves the same).
+int32_t CoverageMask(const double* a, const double* b, const double* c, int32_t x, int32_t y,
+                     double sign);
 }  // namespace ruyijs::web_graphics::draw_detail
 #endif

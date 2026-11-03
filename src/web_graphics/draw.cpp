@@ -18,7 +18,7 @@ using detail::kObjectDataSlot;
 using detail::kObjectExtraSlot;
 using detail::kObjectFlagSlot;
 using draw_detail::Components;
-using draw_detail::Coverage;
+using draw_detail::CoverageMask;
 using draw_detail::Edge;
 using draw_detail::Interpolate;
 using draw_detail::ReadAttributes;
@@ -84,6 +84,8 @@ void ResizeDrawingBuffer(Context& context, int32_t width, int32_t height) {
   context.drawingHeight = nextHeight;
   // A fresh buffer is all zeroes: WebGL's initial clear colour is (0,0,0,0).
   context.drawingBuffer.assign(size_t(next) * size_t(nextHeight) * 4u, 0);
+  // The persistent 4-sample buffer: width*height pixels, 4 samples, 4 channels.
+  context.sampleBuffer.assign(size_t(next) * size_t(nextHeight) * 4u * 4u, 0);
 }
 
 bool DrawTriangleStrip(State& state, Context& context, int32_t first, int32_t count) {
@@ -147,8 +149,8 @@ bool DrawTriangleStrip(State& state, Context& context, int32_t first, int32_t co
     const int32_t maxY = std::min(height - 1, int32_t(std::ceil(std::max(a[1], std::max(b[1], c[1])))));
     for (int32_t y = minY; y <= maxY; ++y)
       for (int32_t x = minX; x <= maxX; ++x) {
-        const int32_t covered = Coverage(a, b, c, x, y, sign);
-        if (covered == 0) continue;
+        const int32_t coveredMask = CoverageMask(a, b, c, x, y, sign);
+        if (coveredMask == 0) continue;
         const double cx = x + 0.5, cy = y + 0.5;
         const double weights[3] = {Edge(b, c, cx, cy) / area, Edge(c, a, cx, cy) / area,
                              Edge(a, b, cx, cy) / area};
@@ -163,16 +165,39 @@ bool DrawTriangleStrip(State& state, Context& context, int32_t first, int32_t co
         GlslValue colour;
         if (!RunStage(fragmentStage, fragment, &colour)) return true;
         // Every covered sample of the pixel carries the same fragment colour (the
-        // D3D11 rasterizer shades once per pixel) and the 4x resolve averages the
-        // four sample slots, so the sum is the colour times the covered count.
-        uint8_t* pixel = context.drawingBuffer.data() +
-                         (size_t(y) * size_t(width) + size_t(x)) * 4u;
+        // D3D11 rasterizer shades once per pixel). The samples persist in the
+        // sample buffer across draws: a second triangle covering different
+        // samples of the same pixel keeps the first triangle's contribution, and
+        // the resolve after the loop averages the four slots like the MSAA
+        // default framebuffer does.
+        uint8_t* slots = context.sampleBuffer.data() +
+                         (size_t(y) * size_t(width) + size_t(x)) * 4u * 4u;
+        uint8_t fragment8[4];
         for (int32_t channel = 0; channel < 4; ++channel) {
-          const int32_t sample = channel < colour.count ? Unorm8(colour.value[channel])
-                                 : channel == 3 ? 255 : 0;
-          pixel[channel] = uint8_t(Resolve8(sample * covered));
+          fragment8[channel] = uint8_t(channel < colour.count ? Unorm8(colour.value[channel])
+                                       : channel == 3 ? 255 : 0);
+        }
+        for (int32_t sampleIndex = 0; sampleIndex < 4; ++sampleIndex) {
+          if (!(coveredMask & (1 << sampleIndex))) continue;
+          for (int32_t channel = 0; channel < 4; ++channel)
+            slots[sampleIndex * 4u + size_t(channel)] = fragment8[channel];
         }
       }
+      // Resolve the triangle's bounding box back into the RGBA8 drawing buffer.
+      const int32_t resolveMinY = std::max(0, minY), resolveMaxY = std::min(height - 1, maxY);
+      const int32_t resolveMinX = std::max(0, minX), resolveMaxX = std::min(width - 1, maxX);
+      for (int32_t y = resolveMinY; y <= resolveMaxY; ++y)
+        for (int32_t x = resolveMinX; x <= resolveMaxX; ++x) {
+          uint8_t* pixel = context.drawingBuffer.data() +
+                           (size_t(y) * size_t(width) + size_t(x)) * 4u;
+          const uint8_t* slots = context.sampleBuffer.data() +
+                                 (size_t(y) * size_t(width) + size_t(x)) * 4u * 4u;
+          for (int32_t channel = 0; channel < 4; ++channel) {
+            const int32_t sum = int32_t(slots[channel]) + int32_t(slots[4 + channel]) +
+                int32_t(slots[8 + channel]) + int32_t(slots[12 + channel]);
+            pixel[channel] = uint8_t(Resolve8(sum));
+          }
+        }
   }
   return true;
 }

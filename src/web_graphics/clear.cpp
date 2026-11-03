@@ -45,8 +45,13 @@ bool ClearCall(JSContext* cx, unsigned argc, JS::Value* vp) {
   for (int64_t y = bottom; y < top; ++y) {
     for (int64_t x = left; x < right; ++x) {
       auto* pixel = context.drawingBuffer.data() + (size_t(y) * size_t(width) + size_t(x)) * 4;
-      for (int channel = 0; channel < 4; ++channel)
-        if (!has_mask || channels.values[channel]) pixel[channel] = rgba[channel];
+      auto* slots = context.sampleBuffer.data() + (size_t(y) * size_t(width) + size_t(x)) * 16;
+      for (int channel = 0; channel < 4; ++channel) {
+        if (!has_mask || channels.values[channel]) {
+          pixel[channel] = rgba[channel];
+          for (int sample = 0; sample < 4; ++sample) slots[sample * 4 + size_t(channel)] = rgba[channel];
+        }
+      }
     }
   }
   return SyncCanvasSurface(state, context);

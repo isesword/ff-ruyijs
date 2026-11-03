@@ -67,6 +67,10 @@ struct Context final {
   // The drawing buffer: premultiplied RGBA8, row 0 is the bottom row, exactly
   // the bytes readPixels reads and the surface handed to the canvas encoder.
   std::vector<uint8_t> drawingBuffer;
+  // The persistent 4-sample backing store: width*height pixels, 4 samples, 4
+  // channels. Draws write their fragment colour into the covered sample slots
+  // and the resolve into drawingBuffer averages the slots.
+  std::vector<uint8_t> sampleBuffer;
   int32_t drawingWidth = 0, drawingHeight = 0;
   // The canvas pixel store the drawing buffer is handed to (see surface.cpp).
   JS::PersistentRootedObject surfaceContext, surfaceImage, surfacePixels;
